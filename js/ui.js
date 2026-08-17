@@ -1083,16 +1083,17 @@ function getFilteredFavoriteEntries() {
 function renderFeedFilterBar() {
     const allTopics = getAllTopicTitles();
     const activeFilters = window.activeFeedTopicFilters || new Set();
+    const filtersText = Array.from(activeFilters).join(', ');
     const filterLabel = activeFilters.size === 0
         ? 'Tüm Konular ▾'
-        : Array.from(activeFilters).join(', ').substring(0, 30) + (Array.from(activeFilters).join(', ').length > 30 ? '…' : '') + ' ▾';
+        : (filtersText.length > 30 ? filtersText.substring(0, 30) + '…' : filtersText) + ' ▾';
     return `
         <div class="feed-page-shell">
             <div class="feed-page-header">
                 <div>
                     <div class="feed-header-eyebrow">Yıldızlı içerikler</div>
                     <h2>Önemli Notlar</h2>
-                    <p>Önemli Notlara eklediğin kartlar tek yerde, notlar ve sınav soruları tek yerde.</p>
+                    <p>Önemli Notlara eklediğin kartlar, notlar ve sınav soruları tek yerde.</p>
                 </div>
                 <button class="feed-clear-btn" onclick="clearFeedTopicFilters()">Tüm filtreleri kaldır</button>
             </div>
