@@ -41,6 +41,8 @@ function renderEducationCard(konuBasligi, aramaSonuclariHTML = '') {
 
     const maddeler = currentKonuDB.maddeler;
     const madde = maddeler[currentMaddeIndex];
+    const maddeItemId = getItemId('education', madde.id || `${konuBasligi}-${madde.maddeNo || currentMaddeIndex}`);
+    madde.favoriMi = isItemFavorite(maddeItemId, madde.favoriMi);
 
     wrapper.innerHTML = `
         <!-- Akıllı Arama Çubuğu -->
@@ -87,49 +89,12 @@ function renderEducationCard(konuBasligi, aramaSonuclariHTML = '') {
             </div>
         </div>
     `;
-// --- KESİN ÇÖZÜM: AKILLI KAYDIRMA DESTEĞİ (MOBİL VE PC) ---
-  const eduWrapper = document.getElementById('education-wrapper');
-  if (eduWrapper) {
-    
-    eduWrapper.onpointerdown = function(e) {
-      // Ekrana ilk dokunulduğunda (veya tıklandığında) koordinatları kaydet
-      this.dataset.startX = e.clientX;
-      this.dataset.startY = e.clientY;
-      this.dataset.isDragging = "true";
-    };
-
-    eduWrapper.onpointerup = function(e) {
-      if (this.dataset.isDragging !== "true") return;
-      this.dataset.isDragging = "false";
-
-      // SADECE Fare (PC) kullanırken metin seçimi yapıldıysa iptal et. (Mobilde engellemez)
-      if (e.pointerType === 'mouse' && window.getSelection().toString().length > 0) return;
-
-      const startX = parseFloat(this.dataset.startX);
-      const startY = parseFloat(this.dataset.startY);
-      const endX = e.clientX;
-      const endY = e.clientY;
-
-      const diffX = endX - startX;
-      const diffY = endY - startY;
-
-      // ÖNEMLİ KORUMA: Eğer dikey kaydırma (okuma için scroll) yatay kaydırmadan daha büyükse İŞLEM YAPMA (Sayfa değişmesin)
-      if (Math.abs(diffY) > Math.abs(diffX)) return;
-
-      const threshold = 50; // Kaydırma hassasiyeti (piksel)
-      if (diffX < -threshold) {
-        // Sola kaydırıldı -> İleri
-        nextMadde(konuBasligi);
-      } else if (diffX > threshold) {
-        // Sağa kaydırıldı -> Geri
-        prevMadde(konuBasligi);
-      }
-    };
-    
-    // Bilgisayarlardaki can sıkıcı "hayalet sürükleme" (resim/metin sürüklenmesi) problemini engeller
-    eduWrapper.ondragstart = () => false;
-  }
-  // --- KAYDIRMA DESTEĞİ BİTİŞİ ---
+    const eduCard = document.getElementById('active-education-card');
+    applySwipeNavigation(
+        eduCard,
+        () => prevMadde(konuBasligi),
+        () => nextMadde(konuBasligi)
+    );
 }
 
 // Akıllı Arama Fonksiyonu
@@ -281,12 +246,12 @@ function toggleEducationStar(btnElement, maddeIndex, konuBasligi) {
     if (!currentKonuDB) return;
 
     const madde = currentKonuDB.maddeler[maddeIndex];
-    madde.favoriMi = !madde.favoriMi;
-
-    btnElement.classList.toggle('active');
-    btnElement.innerHTML = madde.favoriMi ? '★' : '☆';
-
-    console.log(`Madde ${madde.maddeNo} favori durumu: ${madde.favoriMi}`);
+    const itemId = getItemId('education', madde.id || `${konuBasligi}-${madde.maddeNo || maddeIndex}`);
+    const nextState = !isItemFavorite(itemId);
+    madde.favoriMi = nextState;
+    setItemFavorite(itemId, nextState);
+    updateStarUI(btnElement, nextState);
+    refreshFavoriteSurfaces();
 
 
 }
