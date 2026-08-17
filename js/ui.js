@@ -293,6 +293,15 @@ function normalizeTopicLabel(value = '') {
         .trim();
 }
 
+function escapeHTML(value = '') {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function resolveTopicName(rawValue = '') {
     const normalizedValue = normalizeTopicLabel(rawValue);
     if (!normalizedValue) return 'Genel';
@@ -327,7 +336,7 @@ function resolveTopicName(rawValue = '') {
         ['il ozel idaresi', 'İl Özel İdaresi']
     ];
     const aliasMatch = aliases.find(([needle]) => normalizedValue.includes(needle));
-    return aliasMatch ? aliasMatch[1] : rawValue;
+    return aliasMatch ? aliasMatch[1] : 'Genel';
 }
 
 function getAllTopicTitles() {
@@ -1056,8 +1065,8 @@ function renderFeedFilterBar() {
             </div>
             <div class="filter-scroll feed-filter-scroll">
                 ${allTopics.map(topic => `
-                    <button class="filter-chip ${window.activeFeedTopicFilters.has(topic) ? 'active' : ''}" onclick="toggleFeedTopicFilter('${topic.replace(/'/g, "\\'")}')">
-                        ${topic}
+                    <button class="filter-chip ${window.activeFeedTopicFilters.has(topic) ? 'active' : ''}" onclick="toggleFeedTopicFilter(decodeURIComponent('${encodeURIComponent(topic)}'))">
+                        ${escapeHTML(topic)}
                     </button>
                 `).join('')}
             </div>
@@ -1120,12 +1129,12 @@ function loadMoreFeed(feedVerileri) {
         html += `
             <div class="feed-card feed-card-compact" style="animation-delay: ${index * 0.1}s;">
                 <div class="feed-tag-row" style="margin-bottom:10px;">
-                    <span class="feed-tag">${item.konu || item.etiket}</span>
-                    <span style="font-size:0.68rem; opacity:0.65;">${item.tip || ''}</span>
+                    <span class="feed-tag">${escapeHTML(item.konu || item.etiket)}</span>
+                    <span style="font-size:0.68rem; opacity:0.65;">${escapeHTML(item.tip || '')}</span>
                 </div>
-                <div class="feed-subtitle">${item.etiket}</div>
+                <div class="feed-subtitle">${escapeHTML(item.etiket)}</div>
 
-                <div class="feed-text">${item.metin}</div>
+                <div class="feed-text">${escapeHTML(item.metin)}</div>
 
                 <div class="feed-actions">
                     <div class="feed-actions-left">
@@ -1454,7 +1463,7 @@ function buildProfileTopicSummaries() {
     return getAllTopicTitles().map(konuBasligi => {
         const total = getTopicTrackableTotal(konuBasligi);
         const favoriteCount = getTopicFavoriteCount(konuBasligi);
-        const percent = total > 0 ? Math.round((favoriteCount / total) * 100) : 0;
+        const percent = total > 0 ? Math.min(100, Math.round((favoriteCount / total) * 100)) : 0;
         return { konuBasligi, total, favoriteCount, percent };
     }).filter(item => item.total > 0);
 }
@@ -1502,9 +1511,9 @@ function loadMoreProfileFavorites() {
 
     const nextItems = data.slice(window.profileFavoriteFeedIndex, window.profileFavoriteFeedIndex + FEED_LOAD_COUNT);
     container.insertAdjacentHTML('beforeend', nextItems.map(item => `
-        <button class="feed-card profile-topic-card" onclick="openFeedWithTopics(['${item.konuBasligi.replace(/'/g, "\\'")}'])" style="padding:15px;">
+        <button class="feed-card profile-topic-card" onclick="openFeedWithTopics([decodeURIComponent('${encodeURIComponent(item.konuBasligi)}')])" style="padding:15px;">
             <div class="feed-tag-row" style="margin-bottom:10px;">
-                <span class="feed-tag">${item.konuBasligi}</span>
+                <span class="feed-tag">${escapeHTML(item.konuBasligi)}</span>
                 <span class="profile-topic-count">${item.favoriteCount} önemli not</span>
             </div>
             <div class="profile-topic-meta">
