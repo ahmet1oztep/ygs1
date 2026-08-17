@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Adalet GYS Pro</title>
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#3b82f6" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -15,11 +17,27 @@
             <button id="theme-toggle">🌙</button>
         </header>
 
-        <aside id="desktop-left-rail" class="desktop-rail desktop-rail-left" aria-label="Masaüstü gezinme">
-            <button class="nav-btn desktop-rail-btn" data-target="home" title="Ana Sayfa">🏠<span>Ana Sayfa</span></button>
-            <button class="nav-btn desktop-rail-btn" data-target="feed" title="Mevzuat">📜<span>Mevzuat</span></button>
-            <button class="nav-btn desktop-rail-btn" data-target="quiz" title="Sınav">⏱️<span>Sınav</span></button>
-            <button class="nav-btn desktop-rail-btn" data-target="profile" title="Profil">👤<span>Profil</span></button>
+        <!-- PC SABİT SOL SIDEBAR (Sadece masaüstünde görünür) -->
+        <aside id="desktop-sidebar" aria-label="Masaüstü gezinme">
+            <div class="sidebar-brand">GYS PRO</div>
+            <nav class="sidebar-nav">
+                <button class="nav-btn sidebar-nav-btn" data-target="home">🏠 <span>Ana Sayfa</span></button>
+                <button class="nav-btn sidebar-nav-btn" data-target="feed">📜 <span>Mevzuat</span></button>
+                <button class="nav-btn sidebar-nav-btn" data-target="quiz">⏱️ <span>Sınav</span></button>
+                <button class="nav-btn sidebar-nav-btn" data-target="profile">👤 <span>Profil</span></button>
+            </nav>
+            <div class="sidebar-spacer"></div>
+            <div class="sidebar-profile-mini">
+                <div class="sidebar-avatar" id="sidebar-avatar">A</div>
+                <div class="sidebar-profile-info">
+                    <div class="sidebar-name" id="sidebar-user-name">Ahmet Y.</div>
+                    <div class="sidebar-progress-line">
+                        <span id="sidebar-progress-pct">%0</span>
+                        <span class="sidebar-streak" id="sidebar-streak">0🔥</span>
+                    </div>
+                </div>
+            </div>
+            <button class="sidebar-theme-btn" id="sidebar-theme-btn">🌓 <span>Tema Değiştir</span></button>
         </aside>
 
         <main id="main-content">
@@ -29,26 +47,6 @@
             <div id="page-profile" class="page"></div>
             <div id="page-subject-detail" class="page"></div>
         </main>
-
-        <aside id="desktop-right-rail" class="desktop-rail desktop-rail-right" aria-label="Profil kısayolları">
-            <button class="desktop-status-card" onclick="renderHome(db); navigateTo('home');" title="İlerleme paneli">
-                <span class="desktop-status-label">İlerleme</span>
-                <strong id="desktop-progress-value">%0</strong>
-                <small id="desktop-streak-value">0 gün seri</small>
-            </button>
-            <button class="desktop-utility-btn" onclick="renderProfile(db); navigateTo('profile');" title="Profil">
-                👤
-                <span>Profil</span>
-            </button>
-            <button class="desktop-utility-btn" onclick="openFeedWithTopics();" title="Önemli notlar">
-                ⭐
-                <span>Notlar</span>
-            </button>
-            <button class="desktop-utility-btn" onclick="document.getElementById('theme-toggle').click();" title="Temayı değiştir">
-                🌓
-                <span>Tema</span>
-            </button>
-        </aside>
 
         <nav id="bottom-nav">
             <button class="nav-btn" data-target="home">🏠<br><span>Ana Sayfa</span></button>
@@ -127,5 +125,16 @@
     <script src="js/ui.js"></script>
     <script src="js/education-reader.js"></script>
     <script src="js/app.js"></script>
+
+    <script>
+        // Service Worker kaydı (PWA/Offline desteği)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('SW kayıt başarılı:', reg.scope))
+                    .catch(err => console.warn('SW kayıt hatası:', err));
+            });
+        }
+    </script>
 </body>
 </html>

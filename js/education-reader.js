@@ -88,6 +88,11 @@ function renderEducationCard(konuBasligi, aramaSonuclariHTML = '') {
                 </button>
             </div>
         </div>
+
+        <div class="card-nav-row">
+            <button class="card-nav-arrow" onclick="prevMadde('${konuBasligi}')" ${currentMaddeIndex === 0 ? 'disabled' : ''}>← Önceki</button>
+            <button class="card-nav-arrow" onclick="nextMadde('${konuBasligi}')" ${currentMaddeIndex >= maddeler.length - 1 ? 'disabled' : ''}>Sonraki →</button>
+        </div>
     `;
     const eduCard = document.getElementById('active-education-card');
     applySwipeNavigation(
