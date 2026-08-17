@@ -15,6 +15,13 @@
             <button id="theme-toggle">🌙</button>
         </header>
 
+        <aside id="desktop-left-rail" class="desktop-rail desktop-rail-left" aria-label="Masaüstü gezinme">
+            <button class="nav-btn desktop-rail-btn" data-target="home" title="Ana Sayfa">🏠<span>Ana Sayfa</span></button>
+            <button class="nav-btn desktop-rail-btn" data-target="feed" title="Mevzuat">📜<span>Mevzuat</span></button>
+            <button class="nav-btn desktop-rail-btn" data-target="quiz" title="Sınav">⏱️<span>Sınav</span></button>
+            <button class="nav-btn desktop-rail-btn" data-target="profile" title="Profil">👤<span>Profil</span></button>
+        </aside>
+
         <main id="main-content">
             <div id="page-home" class="page"></div>
             <div id="page-feed" class="page"></div>
@@ -22,6 +29,26 @@
             <div id="page-profile" class="page"></div>
             <div id="page-subject-detail" class="page"></div>
         </main>
+
+        <aside id="desktop-right-rail" class="desktop-rail desktop-rail-right" aria-label="Profil kısayolları">
+            <button class="desktop-status-card" onclick="renderHome(db); navigateTo('home');" title="İlerleme paneli">
+                <span class="desktop-status-label">İlerleme</span>
+                <strong id="desktop-progress-value">%0</strong>
+                <small id="desktop-streak-value">0 gün seri</small>
+            </button>
+            <button class="desktop-utility-btn" onclick="renderProfile(db); navigateTo('profile');" title="Profil">
+                👤
+                <span>Profil</span>
+            </button>
+            <button class="desktop-utility-btn" onclick="openFeedWithTopics();" title="Önemli notlar">
+                ⭐
+                <span>Notlar</span>
+            </button>
+            <button class="desktop-utility-btn" onclick="document.getElementById('theme-toggle').click();" title="Temayı değiştir">
+                🌓
+                <span>Tema</span>
+            </button>
+        </aside>
 
         <nav id="bottom-nav">
             <button class="nav-btn" data-target="home">🏠<br><span>Ana Sayfa</span></button>
