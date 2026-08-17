@@ -1,0 +1,206 @@
+HMK ---- 
+
+window.hmkExamsDB = {
+    konuTestleri: [
+        {
+            id: "hmk-test-2016",
+            baslik: "2016 GYS - Hukuk Muhakemeleri Kanunu Soruları",
+            aciklama: "2016 yılı çıkışlı HMK soruları ve çözümleri",
+            sorular: [
+                {
+                    id: "hmk-soru-2016-11",
+                    altKategori: "Eski Hâle Getirme",
+                    isYanlis: false,
+                    cıkmisSoru: true,
+                    sınavYili: "2016 GYS",
+                    soru: "6100 sayılı Hukuk Muhakemeleri Kanunu'na göre eski hâle getirme, işlemin süresinde yapılamamasına sebep olan engelin ortadan kalkmasından itibaren en geç ne kadar zaman içinde talep edilmelidir?",
+                    secenekler: [
+                        "A) Beş gün",
+                        "B) Bir hafta",
+                        "C) İki hafta",
+                        "D) Yirmi gün",
+                        "E) Bir ay"
+                    ],
+                    dogruIndex: 2,
+                    detay: "Eski hâle getirme, engelin kalkmasından itibaren en geç iki hafta içinde talep edilir[cite: 2]."
+                },
+                {
+                    id: "hmk-soru-2016-12",
+                    altKategori: "Dava Türleri",
+                    isYanlis: false,
+                    cıkmisSoru: true,
+                    sınavYili: "2016 GYS",
+                    soru: "6100 sayılı Hukuk Muhakemeleri Kanunu'na göre hangi dava yoluyla mahkemeden, dalanın, bir şeyi vermeye veya yapmaya yahut yapmamaya mahkûm edilmesi talep edilir?",
+                    secenekler: [
+                        "A) Eda davası",
+                        "B) Tespit davası",
+                        "C) İnşai dava",
+                        "D) Kısmi dava",
+                        "E) Terditli dava"
+                    ],
+                    dogruIndex: 0,
+                    detay: "Bir şeyin verilmesi, yapılması veya yapilmamasına mahkumiyet talebi eda davası kapsamındadır[cite: 2]."
+                },
+                {
+                    id: "hmk-soru-2016-13",
+                    altKategori: "Dava Dilekçesi",
+                    isYanlis: false,
+                    cıkmisSoru: true,
+                    sınavYili: "2016 GYS",
+                    soru: "6100 sayılı Hukuk Muhakemeleri Kanunu'na göre dava dilekçesinin içeriğinde aşağıdaki hususlardan hangisiyle ilgili hususların eksik olması hâlinde, hâkim davacıya eksikliği tamamlaması için bir haftalık kesin süre verir?",
+                    secenekler: [
+                        "A) Dayanılan hukuki sebepler",
+                        "B) Davacının, varsa kanuni temsilcisinin veya vekilinin imzası",
+                        "C) İddia edilen her bir vakıanın hangi delillerle ispat edileceği",
+                        "D) Davanın konusu ve malvarlığı haklarına ilişkin davalarda, dava konusunun değeri",
+                        "E) Davacının iddiasının dayanağı olan bütün vakıaların sıra numarası altında açık özetleri"
+                    ],
+                    dogruIndex: 1,
+                    detay: "Davacının veya vekilinin imzasının eksik olması halinde hakim bir haftalık kesin süre verir[cite: 2]."
+                },
+                {
+                    id: "hmk-soru-2016-14",
+                    altKategori: "Dilekçeler Aşaması",
+                    isYanlis: false,
+                    cıkmisSoru: true,
+                    sınavYili: "2016 GYS",
+                    soru: "6100 sayılı Hukuk Muhakemeleri Kanunu'na göre yazılı yargılama kapsamında \"tarafların ikinci dilekçeleri\" ile ilgili olarak davacı cevaba cevap dilekçesini, davalı da ikinci cevap dilekçesini dilekçelerin kendilerine tebliğinden itibaren en geç ne kadar zaman içinde verebilir?",
+                    secenekler: [
+                        "A) Beş gün",
+                        "B) Bir hafta",
+                        "C) On gün",
+                        "D) İki hafta",
+                        "E) Yirmi gün"
+                    ],
+                    dogruIndex: 3,
+                    detay: "İkinci dilekçelerin verilme süresi tebliğden itibaren en geç iki haftadır[cite: 2]."
+                },
+                {
+                    id: "hmk-soru-2016-15",
+                    altKategori: "Hüküm ve Tefhim",
+                    isYanlis: false,
+                    cıkmisSoru: true,
+                    sınavYili: "2016 GYS",
+                    soru: "6100 sayılı Hukuk Muhakemeleri Kanunu'na göre \"hüküm, hükmün verilmesi ve tefhimi\" ile ilgili aşağıdakilerden hangisi yanlıştır?",
+                    secenekler: [
+                        "A) Mahkeme, usule veya esasa ilişkin bir nihai kararla davayı sona erdirir. Yargılama sonunda uyuşmazlığın esası hakkında verilen nihai karar, hükümdür.",
+                        "B) Zorunlu nedenlerle sadece hüküm sonucunun tefhim edildiği hâllerde, gerekçeli kararın tefhim tarihinden başlayarak bir ay içinde yazılması gerekir.",
+                        "C) Hükme ilişkin hususlar, niteliğine aykırı düşse bile, usule ilişkin nihai kararlar hakkında da uygulanır.",
+                        "D) Hükmün tefhimi, her hâlde hüküm sonucunun duruşma tutanağına geçirilerek okunması suretiyle olur.",
+                        "E) Hüküm, yargılamanın sona erdiği duruşmada verilir ve tefhim olunur."
+                    ],
+                    dogruIndex: 2,
+                    detay: "Hükme ilişkin hususlar niteliğine aykırı düşen usule ilişkin nihai kararlarda aynen uygulanmaz[cite: 2]."
+                },
+                {
+                    id: "hmk-soru-2016-16",
+                    altKategori: "Feragat ve Kabul",
+                    isYanlis: false,
+                    cıkmisSoru: true,
+                    sınavYili: "2016 GYS",
+                    soru: "6100 sayılı Hukuk Muhakemeleri Kanunu'na göre \"feragat ve kabulün şekli ve zamanı\" ile ilgili aşağıdakilerden hangisi yanlıştır?",
+                    secenekler: [
+                        "A) Feragat ve kabul, kayıtsız ve şartsız olmalıdır.",
+                        "B) Feragat ve kabul, hüküm kesinleşinceye kadar her zaman yapılabilir.",
+                        "C) Feragat ve kabul, dilekçeyle veya yargılama sırasında sözlü olarak yapılır.",
+                        "D) Feragat ve kabulün hüküm ifade etmesi, karşı tarafın ve mahkemenin muvafakatına bağlıdır.",
+                        "E) Kısmen feragat veya kabulde, feragat edilen veya kabul edilen kısmın, dilekçede yahut tutanakta açıkça gösterilmesi gerekir."
+                    ],
+                    dogruIndex: 3,
+                    detay: "Feragat ve kabul karşı tarafın veya mahkemenin muvafakatına bağlı değildir, tek taraflı irade beyanıyla hüküm ifade eder[cite: 2]."
+                },
+                {
+                    id: "hmk-soru-2016-17",
+                    altKategori: "Adli Yardım",
+                    isYanlis: false,
+                    cıkmisSoru: true,
+                    sınavYili: "2016 GYS",
+                    soru: "6100 sayılı Hukuk Muhakemeleri Kanunu'na göre \"adli yardım talebi\" ile ilgili aşağıdakilerden hangisi yanlıştır?",
+                    secenekler: [
+                        "A) Adli yardım talebine ilişkin evrak, her türlü harç ve vergiye tabidir.",
+                        "B) Adli yardım, asıl talep veya işin karara bağlanacağı mahkemeden istenir.",
+                        "C) Adli yardım, icra ve iflas takiplerinde takibin yapılacağı yerdeki icra mahkemesinden istenir.",
+                        "D) Talepte bulunan kişi, iddiasının özeti ile birlikte, iddiasını dayandıracağı delilleri ve yargılama giderlerini karşılayabilecek durumda olmadığını gösteren mali durumuna ilişkin belgeleri mahkemeye sunmak zorundadır.",
+                        "E) Kanun yollarına başvuru sırasında adli yardım talebi bölge adliye mahkemesine veya Yargıtaya yapılır."
+                    ],
+                    dogruIndex: 0,
+                    detay: "Adli yardım talebine ilişkin evrak, her türlü harç ve vergiden muaftır[cite: 2]."
+                },
+                {
+                    id: "hmk-soru-2016-18",
+                    altKategori: "Kanun Yolları ve Temyiz",
+                    isYanlis: false,
+                    cıkmisSoru: true,
+                    sınavYili: "2016 GYS",
+                    soru: "6100 sayılı Hukuk Muhakemeleri Kanunu'na göre bölge adliye mahkemelerinin aşağıdaki kararlarından hangisi hakkında temyiz yoluna başvurulabilir?",
+                    secenekler: [
+                        "A) Yargı çevresi içinde bulunan ilk derece mahkemeleri arasındaki yetki ve görev uyuşmazlıklarını çözmek için verilen kararlar",
+                        "B) Miktar veya değeri yirmibeşbin Türk lirasını (bu tutar dâhil) geçmeyen davalara ilişkin kararlar",
+                        "C) Soy bağına ilişkin sonuçlar doğuran davalara ilişkin kararlar",
+                        "D) Geçici hukuki korumalar hakkında verilen kararlar",
+                        "E) Çekişmesiz yargı işlerinde verilen kararlar"
+                    ],
+                    dogruIndex: 2,
+                    detay: "Soy bağına ilişkin sonuçlar doğuran davalarda bölge adliye mahkemesi kararlarına karşı temyiz yoluna gidilebilir[cite: 2]."
+                },
+                {
+                    id: "hmk-soru-2016-36",
+                    altKategori: "Elektronik İşlemler",
+                    isYanlis: false,
+                    cıkmisSoru: true,
+                    sınavYili: "2016 GYS",
+                    soru: "6100 sayılı Hukuk Muhakemeleri Kanunu'na göre \"elektronik ortamda yapılan elektronik işlemler\" ile ilgili aşağıdakilerden hangisi yanlıştır?",
+                    secenekler: [
+                        "A) Harç ve avans ödenebilir.",
+                        "B) Dava dosyaları incelenebilir.",
+                        "C) Güvenli elektronik imza kullanılarak dava açılabilir.",
+                        "D) Güvenli elektronik imza ile oluşturulan tutanak ve belgeler ayrıca fizikî olarak gönderilmez, belge örneği aranmaz.",
+                        "E) Kanun kapsamında fiziki olarak hazırlanması öngörülen tutanak ve belgeler güvenli elektronik imzayla elektronik ortamda hazırlanıp gönderilemez."
+                    ],
+                    dogruIndex: 4,
+                    detay: "Fiziki olarak hazırlanması öngörülen tutanak ve belgeler de güvenli elektronik imzayla elektronik ortamda hazırlanıp gönderilebilir[cite: 2]."
+                },
+                {
+                    id: "hmk-soru-2016-52",
+                    altKategori: "Görevli Mahkeme",
+                    isYanlis: false,
+                    cıkmisSoru: true,
+                    sınavYili: "2016 GYS",
+                    soru: "6100 sayılı Hukuk Muhakemeleri Kanunu'na göre dava konusunun değer ve miktarına bakılmaksızın mal varlığı haklarına ilişkin davalarla, şahıs varlığına ilişkin davalarda görevli mahkeme, aksine bir düzenleme bulunmadıkça aşağıdakilerden hangisidir?",
+                    secenekler: [
+                        "A) Ticaret Mahkemesi",
+                        "B) Sulh Ceza Mahkemesi",
+                        "C) Asliye Hukuk Mahkemesi",
+                        "D) Sulh Hukuk Mahkemesi",
+                        "E) Asliye Ceza Mahkemesi"
+                    ],
+                    dogruIndex: 2,
+                    detay: "Aksine düzenleme olmadıkça mal ve şahıs varlığı davalarında görevli mahkeme Asliye Hukuk Mahkemesidir[cite: 2]."
+                },
+                {
+                    id: "hmk-soru-2016-90",
+                    altKategori: "Yetki Sözleşmesi",
+                    isYanlis: false,
+                    cıkmisSoru: true,
+                    sınavYili: "2016 GYS",
+                    soru: "6100 sayılı Hukuk Muhakemeleri Kanunu'na göre yetki sözleşmesine ilişkin çeşitli HMK kuralları çerçevesinde yetki sözleşmesi yapılabilecek taraflar dikkate alındığında, kanuni düzenlemelere göre yetki sözleşmesi kuralları uygulanır.",
+                    secenekler: [
+                        "A) Tacirler veya kamu tüzel kişileri arasında",
+                        "B) Sadece gerçek kişiler arasında",
+                        "C) İşçi ve işveren arasında",
+                        "D) Tüketici ile satıcı arasında"
+                    ],
+                    dogruIndex: 0,
+                    detay: "Yetki sözleşmesi ancak tacirler veya kamu tüzel kişileri arasında yapılabilir[cite: 2]."
+                }
+            ]
+        }
+    ]
+};
+
+
+
+_______________HMK BİTTİ-_______________
+
+
+

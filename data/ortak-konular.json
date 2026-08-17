@@ -1,0 +1,27 @@
+{
+  "kategori": "Ortak Sınav Konuları",
+  "konular": [
+    {
+      "id": "ortak-1",
+      "baslik": "Türkiye Cumhuriyeti Anayasası",
+      "soruSayisi": 6,
+      "ikon": "🏛️",
+      "altKonular": [
+        "Genel esaslar",
+        "Temel hak ve ödevler",
+        "Cumhuriyetin temel organları"
+      ]
+    },
+    {
+      "id": "ortak-2",
+      "baslik": "Atatürk İlkeleri ve İnkılap Tarihi",
+      "soruSayisi": 2,
+      "ikon": "🇹🇷",
+      "altKonular": [
+        "Atatürk ilkeleri",
+        "İnkılap tarihi",
+        "Ulusal güvenlik"
+      ]
+    }
+  ]
+}
