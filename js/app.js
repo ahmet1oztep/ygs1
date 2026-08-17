@@ -116,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderQuizMenu();
     renderProfile(db);
     loadLegalUpdates();
+    if (typeof updateDesktopProgressStatus === 'function') updateDesktopProgressStatus();
 
     // Menü Tıklamaları
     document.querySelectorAll('.nav-btn').forEach(btn => {

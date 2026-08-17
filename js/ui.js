@@ -116,6 +116,11 @@ function toggleFavoriteById(btnElement, itemId) {
     refreshFavoriteSurfaces();
 }
 
+function removeFavoriteById(itemId) {
+    setItemFavorite(itemId, false);
+    refreshFavoriteSurfaces();
+}
+
 function getAllFavoriteEntries() {
     const favorites = [];
 
@@ -127,6 +132,7 @@ function getAllFavoriteEntries() {
             if (active) {
                 favorites.push({
                     id: itemId,
+                    konu: resolveTopicName(item.konu || item.etiket || 'Mevzuat'),
                     etiket: item.etiket || 'Mevzuat',
                     metin: item.metin,
                     tip: 'Mevzuat Notu'
@@ -144,6 +150,7 @@ function getAllFavoriteEntries() {
             if (active) {
                 favorites.push({
                     id: cardId,
+                    konu: konuBasligi,
                     etiket: `${konuBasligi} • Hızlı Tekrar`,
                     metin: card.metin,
                     tip: 'Flashkart'
@@ -157,6 +164,7 @@ function getAllFavoriteEntries() {
             if (active) {
                 favorites.push({
                     id: maddeId,
+                    konu: konuBasligi,
                     etiket: `${konuBasligi} • Konu Anlatımı`,
                     metin: `${madde.baslik}: ${madde.metni}`,
                     tip: 'Konu Anlatımı'
@@ -174,6 +182,7 @@ function getAllFavoriteEntries() {
                 if (active) {
                     favorites.push({
                         id: soruId,
+                        konu: konuBasligi,
                         etiket: `${konuBasligi} • Sınav Sorusu`,
                         metin: soru.soru,
                         tip: 'Soru'
@@ -191,6 +200,7 @@ function refreshFavoriteSurfaces() {
     const profilePageActive = document.getElementById('page-profile')?.classList.contains('active');
     if (feedPageActive && document.getElementById('feed-container')) initFeed(db.mevzuatFeed);
     if (profilePageActive && document.getElementById('profile-favorites-feed')) renderProfile(db);
+    updateDesktopProgressStatus();
 }
 
 function shuffleArray(items = []) {
@@ -204,21 +214,66 @@ function shuffleArray(items = []) {
 
 function applySwipeNavigation(element, onPrev, onNext, threshold = 45) {
     if (!element) return;
+    if (typeof element._swipeCleanup === 'function') element._swipeCleanup();
+
     let startX = 0;
     let startY = 0;
+    let lastX = 0;
+    let lastY = 0;
+    let activePointerId = null;
+    let didSwipe = false;
 
-    element.onpointerdown = (e) => {
-        startX = e.clientX;
-        startY = e.clientY;
+    const handlePointerDown = (e) => {
+        activePointerId = e.pointerId;
+        startX = lastX = e.clientX;
+        startY = lastY = e.clientY;
+        didSwipe = false;
+        if (typeof element.setPointerCapture === 'function') {
+            try { element.setPointerCapture(e.pointerId); } catch (err) {}
+        }
     };
 
-    element.onpointerup = (e) => {
-        if (e.pointerType === 'mouse' && window.getSelection().toString().length > 0) return;
-        const diffX = e.clientX - startX;
-        const diffY = e.clientY - startY;
-        if (Math.abs(diffY) > Math.abs(diffX)) return;
-        if (diffX > threshold) onPrev();
-        if (diffX < -threshold) onNext();
+    const handlePointerMove = (e) => {
+        if (activePointerId !== e.pointerId) return;
+        lastX = e.clientX;
+        lastY = e.clientY;
+    };
+
+    const handlePointerEnd = (e) => {
+        if (activePointerId !== e.pointerId) return;
+        if (e.pointerType === 'mouse' && window.getSelection().toString().length > 0) {
+            activePointerId = null;
+            return;
+        }
+        const diffX = lastX - startX;
+        const diffY = lastY - startY;
+        if (Math.abs(diffX) > threshold && Math.abs(diffX) > Math.abs(diffY) * 1.15) {
+            didSwipe = true;
+            if (diffX > 0) onPrev();
+            if (diffX < 0) onNext();
+        }
+        activePointerId = null;
+    };
+
+    const handleClickCapture = (e) => {
+        if (!didSwipe) return;
+        didSwipe = false;
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    element.addEventListener('pointerdown', handlePointerDown);
+    element.addEventListener('pointermove', handlePointerMove);
+    element.addEventListener('pointerup', handlePointerEnd);
+    element.addEventListener('pointercancel', handlePointerEnd);
+    element.addEventListener('click', handleClickCapture, true);
+
+    element._swipeCleanup = () => {
+        element.removeEventListener('pointerdown', handlePointerDown);
+        element.removeEventListener('pointermove', handlePointerMove);
+        element.removeEventListener('pointerup', handlePointerEnd);
+        element.removeEventListener('pointercancel', handlePointerEnd);
+        element.removeEventListener('click', handleClickCapture, true);
     };
 }
 
@@ -226,6 +281,71 @@ function getProgressColor(percent) {
     if (percent < 35) return '#ef4444';
     if (percent < 75) return '#f59e0b';
     return '#10b981';
+}
+
+function normalizeTopicLabel(value = '') {
+    return String(value)
+        .toLocaleLowerCase('tr-TR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/ı/g, 'i')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+}
+
+function resolveTopicName(rawValue = '') {
+    const normalizedValue = normalizeTopicLabel(rawValue);
+    if (!normalizedValue) return 'Genel';
+
+    const allTopics = [...(db?.ortakKonular || []), ...(db?.gorevKonulari || [])].map(item => item.baslik);
+    const exactMatch = allTopics.find(topic => normalizeTopicLabel(topic) === normalizedValue);
+    if (exactMatch) return exactMatch;
+
+    const aliases = [
+        ['anayasa', 'Anayasa'],
+        ['inkilap', 'Atatürk İlke ve İnkılâpları'],
+        ['ataturk', 'Atatürk İlke ve İnkılâpları'],
+        ['devlet teskilati', 'Devlet Teşkilatı'],
+        ['657', '657 Sayılı Yasa'],
+        ['dil bilgisi', 'Dil Bilgisi'],
+        ['turkce', 'Dil Bilgisi'],
+        ['halkla iliskiler', 'Halkla İlişkiler'],
+        ['etik', 'Etik Davranış'],
+        ['bakanlik merkez', 'Bakanlık Merkez Teşkilatı'],
+        ['komisyonlar yapilanma', 'Komisyonlar ve Yapılanma'],
+        ['komisyonlar gorevler', 'Komisyonlar ve Görevler'],
+        ['uyap', 'UYAP'],
+        ['5018', '5018 S.Y. Mali Yönetim'],
+        ['bakanlik teskilati', 'Bakanlık Teşkilatı'],
+        ['yargi orgutu', 'Yargı Örgütü'],
+        ['e imza', 'E-imza'],
+        ['resmi yazisma', 'Resmi Yazışma'],
+        ['tebligat', 'Tebligat Kanunu'],
+        ['devlet memurlari', 'Devlet Memurları Mevzuatı'],
+        ['idari yargilama', 'İdari Yargılama Usulü'],
+        ['mali yonetim kontrol', 'Kamu Mali Yönetim; Kontrol ve Faaliyetler'],
+        ['il ozel idaresi', 'İl Özel İdaresi']
+    ];
+    const aliasMatch = aliases.find(([needle]) => normalizedValue.includes(needle));
+    return aliasMatch ? aliasMatch[1] : rawValue;
+}
+
+function getAllTopicTitles() {
+    const seen = new Set();
+    return [...(db?.ortakKonular || []), ...(db?.gorevKonulari || [])]
+        .map(item => item.baslik)
+        .filter(title => {
+            if (seen.has(title)) return false;
+            seen.add(title);
+            return true;
+        });
+}
+
+function updateDesktopProgressStatus() {
+    const progressValue = document.getElementById('desktop-progress-value');
+    const streakValue = document.getElementById('desktop-streak-value');
+    if (progressValue) progressValue.textContent = `%${getSessionProgress()}`;
+    if (streakValue) streakValue.textContent = `${db?.kullanici?.istatistik?.calismaSerisi || 0} gün seri`;
 }
 
 // --- FİLTRELEME YARDIMCISI ---
@@ -290,6 +410,7 @@ function renderHome(veri) {
 
     homePage.innerHTML = htmlIcerik;
     enableDragScroll();
+    updateDesktopProgressStatus();
 }
 
 // --- HER KONUYA ÖZEL İÇERİK VERİTABANI ---
@@ -912,32 +1033,77 @@ function toggleQuestionStar(btnElement, soru, konuBasligi = 'Genel', soruIndex =
 let currentFeedIndex = 0;
 const FEED_LOAD_COUNT = 4;
 window.aktifFeedVerisi = [];
+window.activeFeedTopicFilters = new Set();
+
+function getFilteredFavoriteEntries() {
+    const filters = Array.from(window.activeFeedTopicFilters || []);
+    const favorites = getAllFavoriteEntries();
+    if (!filters.length) return favorites;
+    return favorites.filter(item => filters.includes(item.konu));
+}
+
+function renderFeedFilterBar() {
+    const allTopics = getAllTopicTitles();
+    return `
+        <div class="feed-page-shell">
+            <div class="feed-page-header">
+                <div>
+                    <div class="feed-header-eyebrow">Yıldızlı içerikler</div>
+                    <h2>Mevzuat Panon</h2>
+                    <p>Favoriye aldığın konu anlatımları, notlar ve sınav soruları tek yerde.</p>
+                </div>
+                <button class="feed-clear-btn" onclick="clearFeedTopicFilters()">Tüm filtreleri kaldır</button>
+            </div>
+            <div class="filter-scroll feed-filter-scroll">
+                ${allTopics.map(topic => `
+                    <button class="filter-chip ${window.activeFeedTopicFilters.has(topic) ? 'active' : ''}" onclick="toggleFeedTopicFilter('${topic.replace(/'/g, "\\'")}')">
+                        ${topic}
+                    </button>
+                `).join('')}
+            </div>
+            <div id="feed-container"></div>
+        </div>
+    `;
+}
+
+function toggleFeedTopicFilter(topic) {
+    if (!window.activeFeedTopicFilters) window.activeFeedTopicFilters = new Set();
+    if (window.activeFeedTopicFilters.has(topic)) window.activeFeedTopicFilters.delete(topic);
+    else window.activeFeedTopicFilters.add(topic);
+    initFeed(db.mevzuatFeed);
+}
+
+function clearFeedTopicFilters() {
+    window.activeFeedTopicFilters = new Set();
+    initFeed(db.mevzuatFeed);
+}
+
+function openFeedWithTopics(topics = []) {
+    window.activeFeedTopicFilters = new Set((topics || []).filter(Boolean));
+    initFeed(db.mevzuatFeed);
+    navigateTo('feed');
+}
 
 function initFeed(feedVerileri) {
-    const baseFeed = (feedVerileri || []).map((item, index) => {
-        const itemId = getItemId('feed', item.id || index);
-        item.favoriMi = isItemFavorite(itemId, item.favoriMi);
-        return {
-            id: itemId,
-            etiket: item.etiket,
-            metin: item.metin,
-            ipucu: item.ipucu,
-            favoriMi: item.favoriMi,
-            tip: 'Mevzuat Notu',
-            source: 'mevzuat',
-            feedIndex: index
-        };
-    });
-
-    const favoriteFeedItems = getAllFavoriteEntries().map(item => ({
+    const favoriteFeedItems = getFilteredFavoriteEntries().map(item => ({
         ...item,
         source: 'favorite'
     }));
 
-    const normalFeedItems = baseFeed.filter(item => !item.favoriMi);
-    window.aktifFeedVerisi = [...favoriteFeedItems, ...normalFeedItems];
-    document.getElementById('page-feed').innerHTML = '<div id="feed-container"></div>';
+    window.aktifFeedVerisi = favoriteFeedItems;
+    document.getElementById('page-feed').innerHTML = renderFeedFilterBar();
     currentFeedIndex = 0;
+    const container = document.getElementById('feed-container');
+    if (container && favoriteFeedItems.length === 0) {
+        container.innerHTML = `
+            <div class="feed-empty-state">
+                <div class="feed-empty-icon">📭</div>
+                <h3>Bu filtrede favori bulunamadı</h3>
+                <p>Başka bir konu seçebilir ya da yıldız ekleyerek bu alanı doldurabilirsin.</p>
+            </div>
+        `;
+        return;
+    }
     loadMoreFeed(window.aktifFeedVerisi);
 }
 
@@ -952,11 +1118,12 @@ function loadMoreFeed(feedVerileri) {
         const itemId = currentFeedIndex + index;
 
         html += `
-            <div class="feed-card" style="animation-delay: ${index * 0.1}s;">
+            <div class="feed-card feed-card-compact" style="animation-delay: ${index * 0.1}s;">
                 <div class="feed-tag-row" style="margin-bottom:10px;">
-                    <span class="feed-tag">${item.etiket}</span>
+                    <span class="feed-tag">${item.konu || item.etiket}</span>
                     <span style="font-size:0.68rem; opacity:0.65;">${item.tip || ''}</span>
                 </div>
+                <div class="feed-subtitle">${item.etiket}</div>
 
                 <div class="feed-text">${item.metin}</div>
 
@@ -965,8 +1132,8 @@ function loadMoreFeed(feedVerileri) {
                         ${item.ipucu ? `<button class="action-btn" onclick="openModal('💡 Sınav İpucu', '${item.ipucu.replace(/'/g, "\\'")}')">💡 İpucu</button>` : ''}
                     </div>
 
-                    <button class="star-btn ${item.favoriMi ? 'active' : ''}" onclick="${item.source === 'mevzuat' ? `toggleStar(this, ${item.feedIndex})` : `toggleFavoriteById(this, '${item.id}')`}">
-                        ${item.favoriMi ? '★' : '☆'}
+                    <button class="remove-favorite-btn" onclick="removeFavoriteById('${item.id}')">
+                        ✕ Kaldır
                     </button>
                 </div>
             </div>
@@ -985,12 +1152,17 @@ function renderQuizMenu() {
     const starredQuestions = getStarredQuestionsPool();
 
     quizPage.innerHTML = `
-        <div class="quiz-header">
+        <div class="quiz-header quiz-hero-card">
             <h2>Sınav Merkezi</h2>
             <p>Kendini test et ve eksiklerini kapat</p>
+            <div class="quiz-overview-grid">
+                <div class="quiz-overview-item"><strong>${Math.min(allQuestions.length, MAX_EXAM_QUESTIONS)}</strong><span>Genel havuz</span></div>
+                <div class="quiz-overview-item"><strong>${Math.min(allWrong.length, MAX_EXAM_QUESTIONS)}</strong><span>Yanlış soru</span></div>
+                <div class="quiz-overview-item"><strong>${Math.min(starredQuestions.length, MAX_EXAM_QUESTIONS)}</strong><span>Odak soru</span></div>
+            </div>
         </div>
 
-        <div class="action-card power-up" onclick="startMainExamMode('guclendir')">
+        <div class="action-card power-up quiz-action-card" onclick="startMainExamMode('guclendir')">
             <div class="icon">💪</div>
             <div class="info">
                 <h3>Güçlendir</h3>
@@ -999,7 +1171,7 @@ function renderQuizMenu() {
             <div class="badge">${Math.min(allWrong.length, MAX_EXAM_QUESTIONS)} Soru</div>
         </div>
 
-        <div class="action-card exam" onclick="startMainExamMode('gercek-deneme')">
+        <div class="action-card exam quiz-action-card" onclick="startMainExamMode('gercek-deneme')">
             <div class="icon">📝</div>
             <div class="info">
                 <h3>Gerçek Deneme</h3>
@@ -1008,7 +1180,7 @@ function renderQuizMenu() {
             <div class="badge" style="background:#fee2e2;color:#ef4444;">${Math.min(allQuestions.length, MAX_EXAM_QUESTIONS)} Soru</div>
         </div>
 
-        <div class="action-card" onclick="startMainExamMode('konu-tarama')">
+        <div class="action-card quiz-action-card" onclick="startMainExamMode('konu-tarama')">
             <div class="icon">🎯</div>
             <div class="info">
                 <h3>Konu Tarama Testleri</h3>
@@ -1028,6 +1200,15 @@ let mainExamQuestions = [];
 let mainExamAnswers = {};
 let mainExamCurrentIndex = 0;
 let mainExamType = 'gercek-deneme';
+
+function getMainExamTypeMeta() {
+    const metaMap = {
+        guclendir: { etiket: 'Güçlendirme', aciklama: 'Yanlış yaptığın sorularla odaklı antrenman.', ikon: '💪' },
+        'gercek-deneme': { etiket: 'Gerçek Deneme', aciklama: 'Karışık soru havuzunda resmî sınav temposu.', ikon: '📝' },
+        'konu-tarama': { etiket: 'Konu Tarama', aciklama: 'Favori içeriklerine göre hedefli soru çözümü.', ikon: '🎯' }
+    };
+    return metaMap[mainExamType] || metaMap['gercek-deneme'];
+}
 
 function getAllQuestionsPool() {
     const allQuestions = [];
@@ -1105,15 +1286,23 @@ function renderMainExamQuestion() {
     const soru = mainExamQuestions[mainExamCurrentIndex];
     const itemId = getItemId('question', soru.id || soru.fallbackId || `main-${mainExamCurrentIndex}`);
     soru.favoriMi = isItemFavorite(itemId, soru.favoriMi);
+    const meta = getMainExamTypeMeta();
+    const isLastQuestion = mainExamCurrentIndex === mainExamQuestions.length - 1;
 
     quizPage.innerHTML = `
         <button class="back-btn" onclick="renderQuizMenu()">⬅ Sınav Merkezine Dön</button>
-        <div class="active-quiz-header">
-            <div class="quiz-progress">Soru ${mainExamCurrentIndex + 1} / ${mainExamQuestions.length}</div>
+        <div class="active-quiz-header quiz-header-card">
+            <div>
+                <div class="quiz-progress">${meta.ikon} ${meta.etiket}</div>
+                <div class="quiz-topic-line">${soru.kaynakKonu || 'Karma'} • ${soru.altKategori || 'Genel'}</div>
+            </div>
+            <div class="quiz-timer quiz-step-chip">Soru ${mainExamCurrentIndex + 1} / ${mainExamQuestions.length}</div>
         </div>
+        <div class="quiz-support-text">${meta.aciklama}</div>
         <div class="question-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; gap:10px;">
-                <div class="feed-tag">${soru.kaynakKonu || 'Karma'} • ${soru.altKategori || 'Genel'}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; gap:10px; flex-wrap:wrap;">
+                <div class="feed-tag">${soru.kaynakKonu || 'Karma'}</div>
+                <div class="feed-tag quiz-secondary-tag">${soru.altKategori || 'Genel'}</div>
                 <button class="star-btn ${soru.favoriMi ? 'active' : ''}" onclick="toggleQuestionStar(this, mainExamQuestions[${mainExamCurrentIndex}], '${soru.kaynakKonu || 'Genel'}', ${mainExamCurrentIndex})">
                     ${soru.favoriMi ? '★' : '☆'}
                 </button>
@@ -1125,22 +1314,26 @@ function renderMainExamQuestion() {
                 </button>
             `).join('')}
         </div>
-        <button class="next-btn" onclick="${mainExamCurrentIndex === mainExamQuestions.length - 1 ? 'finishMainExam()' : 'goNextMainExamQuestion()'}">
-            ${mainExamCurrentIndex === mainExamQuestions.length - 1 ? 'Sınavı Bitir ✔️' : 'Sonraki Soru ➔'}
-        </button>
+        <div class="exam-nav-row">
+            ${mainExamCurrentIndex > 0 ? `<button class="exam-nav-btn" onclick="prevMainExamQuestion()">⬅ Önceki</button>` : ''}
+            <button class="exam-nav-btn exam-nav-btn-danger" onclick="confirmMainExamFinish()">Sınavı Bitir</button>
+            <button class="exam-nav-btn exam-nav-btn-primary" onclick="${isLastQuestion ? 'finishMainExam()' : 'goNextMainExamQuestion()'}">
+                ${isLastQuestion ? 'Sonucu Gör ✔️' : 'Sonraki Soru ➔'}
+            </button>
+        </div>
     `;
 }
 
 function selectMainExamOption(optionIndex) {
     mainExamAnswers[mainExamCurrentIndex] = optionIndex;
-    setTimeout(() => {
-        if (mainExamCurrentIndex < mainExamQuestions.length - 1) {
-            mainExamCurrentIndex++;
-            renderMainExamQuestion();
-        } else {
-            finishMainExam();
-        }
-    }, 150);
+    renderMainExamQuestion();
+}
+
+function prevMainExamQuestion() {
+    if (mainExamCurrentIndex > 0) {
+        mainExamCurrentIndex--;
+        renderMainExamQuestion();
+    }
 }
 
 function goNextMainExamQuestion() {
@@ -1150,6 +1343,30 @@ function goNextMainExamQuestion() {
     } else {
         finishMainExam();
     }
+}
+
+function confirmMainExamFinish() {
+    const modal = document.getElementById('custom-modal');
+    const title = document.getElementById('modal-title');
+    const text = document.getElementById('modal-text');
+    if (!modal || !title || !text) return;
+
+    title.innerHTML = 'Sınavı Bitir';
+    text.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:14px;">
+            <p style="line-height:1.5;">Sınavı şimdi bitirirsen mevcut cevaplarına göre sonuç ekranı hazırlanır.</p>
+            <div style="display:flex; gap:10px;">
+                <button id="modal-iptal-btn" class="exam-nav-btn" style="flex:1;">Vazgeç</button>
+                <button id="modal-onay-btn" class="exam-nav-btn exam-nav-btn-danger" style="flex:1;">Bitir</button>
+            </div>
+        </div>
+    `;
+    modal.classList.add('show');
+    document.getElementById('modal-iptal-btn')?.addEventListener('click', closeModal, { once: true });
+    document.getElementById('modal-onay-btn')?.addEventListener('click', () => {
+        closeModal();
+        finishMainExam();
+    }, { once: true });
 }
 
 function finishMainExam() {
@@ -1215,9 +1432,36 @@ function reviewMainExamQuestion(index) {
 }
 
 // --- PROFİL ---
+function getTopicTrackableTotal(konuBasligi) {
+    let total = 0;
+    const konuVerisi = getKonuVerisi(konuBasligi);
+    total += (konuVerisi.flashcards || []).length;
+    total += (konuVerisi.maddeler || []).length;
+    total += getTumSorular(konuBasligi).length;
+
+    if (db && Array.isArray(db.mevzuatFeed)) {
+        total += db.mevzuatFeed.filter(item => resolveTopicName(item.konu || item.etiket || '') === konuBasligi).length;
+    }
+
+    return total;
+}
+
+function getTopicFavoriteCount(konuBasligi) {
+    return getAllFavoriteEntries().filter(item => item.konu === konuBasligi).length;
+}
+
+function buildProfileTopicSummaries() {
+    return getAllTopicTitles().map(konuBasligi => {
+        const total = getTopicTrackableTotal(konuBasligi);
+        const favoriteCount = getTopicFavoriteCount(konuBasligi);
+        const percent = total > 0 ? Math.round((favoriteCount / total) * 100) : 0;
+        return { konuBasligi, total, favoriteCount, percent };
+    }).filter(item => item.total > 0);
+}
+
 function renderProfile(veri) {
     const profilePage = document.getElementById('page-profile');
-    const favoriNotlar = getAllFavoriteEntries();
+    const topicSummaries = buildProfileTopicSummaries();
 
     profilePage.innerHTML = `
         <div class="profile-header-card">
@@ -1236,17 +1480,19 @@ function renderProfile(veri) {
         </div>
 
         <div class="section-title" style="text-align:left;">⭐ Önemli Notlar</div>
-        <div id="profile-favorites-feed" class="saved-notes-list"></div>
+        <div id="profile-favorites-feed" class="saved-notes-list profile-topic-summary-list"></div>
     `;
 
-    if (favoriNotlar.length === 0) {
+    if (topicSummaries.length === 0) {
         const container = document.getElementById('profile-favorites-feed');
-        if (container) container.innerHTML = '<p style="opacity:0.6; font-size:0.85rem;">Henüz favoriye aldığın bir not yok.</p>';
+        if (container) container.innerHTML = '<p style="opacity:0.6; font-size:0.85rem;">Henüz gösterilecek konu özeti bulunmuyor.</p>';
+        updateDesktopProgressStatus();
         return;
     }
-    window.profileFavoriteFeedData = favoriNotlar;
+    window.profileFavoriteFeedData = topicSummaries;
     window.profileFavoriteFeedIndex = 0;
     loadMoreProfileFavorites();
+    updateDesktopProgressStatus();
 }
 
 function loadMoreProfileFavorites() {
@@ -1256,13 +1502,19 @@ function loadMoreProfileFavorites() {
 
     const nextItems = data.slice(window.profileFavoriteFeedIndex, window.profileFavoriteFeedIndex + FEED_LOAD_COUNT);
     container.insertAdjacentHTML('beforeend', nextItems.map(item => `
-        <div class="feed-card" style="padding:15px;">
-            <div class="feed-tag-row" style="margin-bottom:8px;">
-                <span class="feed-tag">${item.etiket}</span>
-                <span style="font-size:0.68rem; opacity:0.65;">${item.tip || ''}</span>
+        <button class="feed-card profile-topic-card" onclick="openFeedWithTopics(['${item.konuBasligi.replace(/'/g, "\\'")}'])" style="padding:15px;">
+            <div class="feed-tag-row" style="margin-bottom:10px;">
+                <span class="feed-tag">${item.konuBasligi}</span>
+                <span class="profile-topic-count">${item.favoriteCount} önemli not</span>
             </div>
-            <div style="font-size: 0.85rem;">${item.metin}</div>
-        </div>
+            <div class="profile-topic-meta">
+                <strong>%${item.percent}</strong>
+                <span>${item.total} kartın ${item.favoriteCount} tanesi işaretli</span>
+            </div>
+            <div class="topic-progress-bg profile-topic-progress">
+                <div class="topic-progress-fill" style="width:${item.percent}%; background:${getProgressColor(item.percent)};"></div>
+            </div>
+        </button>
     `).join(''));
     window.profileFavoriteFeedIndex += FEED_LOAD_COUNT;
 }
@@ -1470,7 +1722,10 @@ function renderFormalQuestion(konuBasligi) {
 
     detailPage.innerHTML = `
         <div class="active-quiz-header" style="margin-top: 10px;">
-            <div class="quiz-progress" style="color: #ef4444;">Soru ${formalExamCurrentIndex + 1} / ${formalExamQuestions.length}</div>
+            <div>
+                <div class="quiz-progress" style="color: #ef4444;">${konuBasligi} • Soru ${formalExamCurrentIndex + 1} / ${formalExamQuestions.length}</div>
+                <div class="quiz-topic-line">${activeExamType === 'genel' ? 'Genel deneme akışı' : activeExamType === 'guclendir' ? 'Yanlış sorular odaklı tekrar' : 'Çıkmış sorular serisi'}</div>
+            </div>
             <div class="quiz-timer" id="formal-timer-display" style="background: rgba(239,68,68,0.1); color: #ef4444; font-size: 1.1rem; border: 1px solid rgba(239,68,68,0.3);">--:--</div>
         </div>
 
@@ -1478,7 +1733,10 @@ function renderFormalQuestion(konuBasligi) {
 
         <div class="question-card" style="box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-top: 5px;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:15px;">
-                <div class="feed-tag" style="display:inline-block; background: #fee2e2; color: #ef4444;">${soru.altKategori || 'Karma'} (${soru.sınavYili || 'Genel'})</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <div class="feed-tag">${konuBasligi}</div>
+                    <div class="feed-tag" style="display:inline-block; background: #fee2e2; color: #ef4444;">${soru.altKategori || 'Karma'} (${soru.sınavYili || 'Genel'})</div>
+                </div>
                 <button class="star-btn ${soru.favoriMi ? 'active' : ''}" onclick="toggleQuestionStar(this, formalExamQuestions[${formalExamCurrentIndex}], '${konuBasligi}', ${formalExamCurrentIndex})">
                     ${soru.favoriMi ? '★' : '☆'}
                 </button>
