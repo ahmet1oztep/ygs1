@@ -87,8 +87,7 @@ function isItemFavorite(itemId, defaultValue = false) {
 
 function setItemFavorite(itemId, active) {
     const store = getFavoriteStore();
-    if (active) store[itemId] = true;
-    else delete store[itemId];
+    store[itemId] = !!active;
     saveFavoriteStore(store);
 }
 
@@ -224,6 +223,7 @@ function applySwipeNavigation(element, onPrev, onNext, threshold = 45) {
     let didSwipe = false;
 
     const handlePointerDown = (e) => {
+        if (e.target.closest('button, a, input, select, textarea')) return;
         activePointerId = e.pointerId;
         startX = lastX = e.clientX;
         startY = lastY = e.clientY;
@@ -363,6 +363,30 @@ function filtreyeGoreGetir(secilenEtiket, flashcards) {
     return flashcards.filter(kart => kart.etiketler && kart.etiketler.includes(secilenEtiket));
 }
 
+// --- GÜNLÜK MOTİVASYON ---
+const DAILY_MOTIVATIONS = [
+    "Küçük adımlar büyük zirvelere çıkar. Bugün bir adım daha at.",
+    "Sınav sana hazırsın; her okuduğun satır bunun kanıtı.",
+    "Zorlu anlarda vazgeçmek kolay, ama başarmak kalıcı.",
+    "Bugün öğrendiğin bir madde, sınavda bir soruyu çözecek.",
+    "Rakiplerin dinlenirken sen çalışıyorsun — bu fark yaratır.",
+    "Her tekrar, bilgiyi uzun süreli belleğe işler. Devam et.",
+    "Başarı, her gün biraz daha iyi olmak demektir.",
+    "Sabır ve istikrar, zekanın önüne geçer. Sen istikrarlısın.",
+    "Hata yapmak öğrenmenin parçasıdır; asıl hata durmaktır.",
+    "Hedefin net, yolun açık. Geri adım yok.",
+    "Bu sınav seni tanımlamıyor; ama geçmeye olan kararlılığın tanımlıyor.",
+    "Bugünün tembelliği yarının pişmanlığı olur. Sen daha iyisini hak ediyorsun.",
+    "Her konu anlatımı, seni rakiplerinin bir adım önüne taşıyor.",
+    "Yorgunluk geçici, başarı kalıcı. Biraz daha.",
+    "Sınava hazırlanmak maraton koşmak gibidir; ritmi koru."
+];
+
+function getDailyMotivation() {
+    const dayIndex = Math.floor(Date.now() / 86400000);
+    return DAILY_MOTIVATIONS[dayIndex % DAILY_MOTIVATIONS.length];
+}
+
 // --- ANA SAYFA ÇİZİMİ ---
 function renderHome(veri) {
     const homePage = document.getElementById('page-home');
@@ -415,6 +439,11 @@ function renderHome(veri) {
                 <p>${guncel.detay}</p>
             </div>
         `).join('')}
+
+        <div class="daily-motivation-block">
+            <div class="daily-motivation-label">🎯 Hedefine Odaklan</div>
+            <p class="daily-motivation-text">${getDailyMotivation()}</p>
+        </div>
     `;
 
     homePage.innerHTML = htmlIcerik;
@@ -1053,22 +1082,31 @@ function getFilteredFavoriteEntries() {
 
 function renderFeedFilterBar() {
     const allTopics = getAllTopicTitles();
+    const activeFilters = window.activeFeedTopicFilters || new Set();
+    const filterLabel = activeFilters.size === 0
+        ? 'Tüm Konular ▾'
+        : Array.from(activeFilters).join(', ').substring(0, 30) + (Array.from(activeFilters).join(', ').length > 30 ? '…' : '') + ' ▾';
     return `
         <div class="feed-page-shell">
             <div class="feed-page-header">
                 <div>
                     <div class="feed-header-eyebrow">Yıldızlı içerikler</div>
-                    <h2>Mevzuat Panon</h2>
-                    <p>Favoriye aldığın konu anlatımları, notlar ve sınav soruları tek yerde.</p>
+                    <h2>Önemli Notlar</h2>
+                    <p>Önemli Notlara eklediğin kartlar tek yerde, notlar ve sınav soruları tek yerde.</p>
                 </div>
                 <button class="feed-clear-btn" onclick="clearFeedTopicFilters()">Tüm filtreleri kaldır</button>
             </div>
-            <div class="filter-scroll feed-filter-scroll">
-                ${allTopics.map(topic => `
-                    <button class="filter-chip feed-filter-chip ${window.activeFeedTopicFilters.has(topic) ? 'active' : ''}" data-topic="${escapeHTML(topic)}">
-                        ${escapeHTML(topic)}
-                    </button>
-                `).join('')}
+            <div class="custom-dropdown-container" style="position: relative; width: 100%;">
+                <button onclick="toggleDropdown('feed-topic-dropdown-box')" class="filter-main-btn" id="feed-topic-filter-btn" style="width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                    <span id="feed-topic-filter-label">${filterLabel}</span>
+                </button>
+                <div id="feed-topic-dropdown-box" class="custom-dropdown-content" style="display: none; position: absolute; top: 100%; left: 0; width: 100%; z-index: 100; max-height: 220px; overflow-y: auto;">
+                    ${allTopics.map(topic => `
+                        <div class="dropdown-option feed-filter-chip ${activeFilters.has(topic) ? 'active' : ''}" data-topic="${escapeHTML(topic)}" style="padding: 10px 14px; cursor: pointer;">
+                            ${activeFilters.has(topic) ? '✓ ' : ''}${escapeHTML(topic)}
+                        </div>
+                    `).join('')}
+                </div>
             </div>
             <div id="feed-container"></div>
         </div>
@@ -1079,7 +1117,9 @@ function bindFeedTopicEvents() {
     document.querySelectorAll('.feed-filter-chip').forEach(btn => {
         if (btn.dataset.bound === 'true') return;
         btn.dataset.bound = 'true';
-        btn.addEventListener('click', () => toggleFeedTopicFilter(btn.dataset.topic || ''));
+        btn.addEventListener('click', () => {
+            toggleFeedTopicFilter(btn.dataset.topic || '');
+        });
     });
 }
 
@@ -1502,7 +1542,7 @@ function buildProfileTopicSummaries() {
 }
 
 function bindProfileTopicSummaryEvents(scope = document) {
-    scope.querySelectorAll('.profile-topic-card').forEach(card => {
+    scope.querySelectorAll('.profile-topic-card, .profile-topic-mini-card').forEach(card => {
         if (card.dataset.bound === 'true') return;
         card.dataset.bound = 'true';
         card.addEventListener('click', () => openFeedWithTopics([card.dataset.topic || '']));
@@ -1530,7 +1570,7 @@ function renderProfile(veri) {
         </div>
 
         <div class="section-title" style="text-align:left;">⭐ Önemli Notlar</div>
-        <div id="profile-favorites-feed" class="saved-notes-list profile-topic-summary-list"></div>
+        <div id="profile-favorites-feed" class="profile-topic-summary-grid"></div>
     `;
 
     if (topicSummaries.length === 0) {
@@ -1552,18 +1592,10 @@ function loadMoreProfileFavorites() {
 
     const nextItems = data.slice(window.profileFavoriteFeedIndex, window.profileFavoriteFeedIndex + FEED_LOAD_COUNT);
     container.insertAdjacentHTML('beforeend', nextItems.map(item => `
-        <button class="feed-card profile-topic-card" data-topic="${escapeHTML(item.konuBasligi)}" style="padding:15px;">
-            <div class="feed-tag-row" style="margin-bottom:10px;">
-                <span class="feed-tag">${escapeHTML(item.konuBasligi)}</span>
-                <span class="profile-topic-count">${item.favoriteCount} önemli not</span>
-            </div>
-            <div class="profile-topic-meta">
-                <strong>%${item.percent}</strong>
-                <span>${item.total} kartın ${item.favoriteCount} tanesi işaretli</span>
-            </div>
-            <div class="topic-progress-bg profile-topic-progress">
-                <div class="topic-progress-fill" style="width:${item.percent}%; background:${getProgressColor(item.percent)};"></div>
-            </div>
+        <button class="profile-topic-mini-card" data-topic="${escapeHTML(item.konuBasligi)}">
+            <div class="profile-topic-mini-name">${escapeHTML(item.konuBasligi)}</div>
+            <div class="profile-topic-mini-meta" style="color:${getProgressColor(item.percent)};">%${item.percent}</div>
+            <div class="profile-topic-mini-count">${item.favoriteCount}/${item.total}</div>
         </button>
     `).join(''));
     bindProfileTopicSummaryEvents(container);
