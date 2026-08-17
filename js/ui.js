@@ -60,9 +60,166 @@ function closeModal() {
     document.getElementById('custom-modal').classList.remove('show');
 }
 
+const FAVORITES_STORAGE_KEY = 'gys_favorites_v1';
+const WRONG_QUESTIONS_STORAGE_KEY = 'gys_yanlis_sorular';
+
+function getFavoriteStore() {
+    try {
+        return JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || '{}');
+    } catch (e) {
+        return {};
+    }
+}
+
+function saveFavoriteStore(store) {
+    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(store));
+}
+
+function getItemId(prefix, fallback) {
+    return `${prefix}:${String(fallback)}`;
+}
+
+function isItemFavorite(itemId, defaultValue = false) {
+    const store = getFavoriteStore();
+    if (Object.prototype.hasOwnProperty.call(store, itemId)) return !!store[itemId];
+    return !!defaultValue;
+}
+
+function setItemFavorite(itemId, active) {
+    const store = getFavoriteStore();
+    if (active) store[itemId] = true;
+    else delete store[itemId];
+    saveFavoriteStore(store);
+}
+
+function updateStarUI(btnElement, isActive) {
+    if (!btnElement) return;
+    btnElement.classList.toggle('active', !!isActive);
+    btnElement.innerHTML = isActive ? '★' : '☆';
+}
+
 function toggleStar(btnElement, id) {
-    btnElement.classList.toggle('active');
-    btnElement.innerHTML = btnElement.classList.contains('active') ? '★' : '☆';
+    if (!db || !db.mevzuatFeed || !db.mevzuatFeed[id]) return;
+    const item = db.mevzuatFeed[id];
+    const itemId = getItemId('feed', item.id || id);
+    const nextState = !isItemFavorite(itemId);
+    item.favoriMi = nextState;
+    setItemFavorite(itemId, nextState);
+    updateStarUI(btnElement, nextState);
+    refreshFavoriteSurfaces();
+}
+
+function toggleFavoriteById(btnElement, itemId) {
+    const nextState = !isItemFavorite(itemId);
+    setItemFavorite(itemId, nextState);
+    updateStarUI(btnElement, nextState);
+    refreshFavoriteSurfaces();
+}
+
+function getAllFavoriteEntries() {
+    const favorites = [];
+
+    if (db && Array.isArray(db.mevzuatFeed)) {
+        db.mevzuatFeed.forEach((item, index) => {
+            const itemId = getItemId('feed', item.id || index);
+            const active = isItemFavorite(itemId, item.favoriMi);
+            item.favoriMi = active;
+            if (active) {
+                favorites.push({
+                    id: itemId,
+                    etiket: item.etiket || 'Mevzuat',
+                    metin: item.metin,
+                    tip: 'Mevzuat Notu'
+                });
+            }
+        });
+    }
+
+    Object.entries(dbEslestirme || {}).forEach(([konuBasligi, konu]) => {
+        if (!konu) return;
+        (konu.flashcards || []).forEach((card, index) => {
+            const cardId = getItemId('flashcard', card.id || `${konuBasligi}-${index}`);
+            const active = isItemFavorite(cardId, card.favoriMi);
+            card.favoriMi = active;
+            if (active) {
+                favorites.push({
+                    id: cardId,
+                    etiket: `${konuBasligi} • Hızlı Tekrar`,
+                    metin: card.metin,
+                    tip: 'Flashkart'
+                });
+            }
+        });
+        (konu.maddeler || []).forEach((madde, index) => {
+            const maddeId = getItemId('education', madde.id || `${konuBasligi}-${madde.maddeNo || index}`);
+            const active = isItemFavorite(maddeId, madde.favoriMi);
+            madde.favoriMi = active;
+            if (active) {
+                favorites.push({
+                    id: maddeId,
+                    etiket: `${konuBasligi} • Konu Anlatımı`,
+                    metin: `${madde.baslik}: ${madde.metni}`,
+                    tip: 'Konu Anlatımı'
+                });
+            }
+        });
+    });
+
+    Object.entries(window.examsDB || {}).forEach(([konuBasligi, examData]) => {
+        (examData?.konuTestleri || []).forEach(test => {
+            (test.sorular || []).forEach((soru, index) => {
+                const soruId = getItemId('question', soru.id || `${konuBasligi}-${test.id || test.baslik}-${index}`);
+                const active = isItemFavorite(soruId, soru.favoriMi);
+                soru.favoriMi = active;
+                if (active) {
+                    favorites.push({
+                        id: soruId,
+                        etiket: `${konuBasligi} • Sınav Sorusu`,
+                        metin: soru.soru,
+                        tip: 'Soru'
+                    });
+                }
+            });
+        });
+    });
+
+    return favorites;
+}
+
+function refreshFavoriteSurfaces() {
+    const feedPageActive = document.getElementById('page-feed')?.classList.contains('active');
+    const profilePageActive = document.getElementById('page-profile')?.classList.contains('active');
+    if (feedPageActive && document.getElementById('feed-container')) initFeed(db.mevzuatFeed);
+    if (profilePageActive && document.getElementById('profile-favorites-feed')) renderProfile(db);
+}
+
+function shuffleArray(items = []) {
+    const array = [...items];
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+function applySwipeNavigation(element, onPrev, onNext, threshold = 45) {
+    if (!element) return;
+    let startX = 0;
+    let startY = 0;
+
+    element.onpointerdown = (e) => {
+        startX = e.clientX;
+        startY = e.clientY;
+    };
+
+    element.onpointerup = (e) => {
+        if (e.pointerType === 'mouse' && window.getSelection().toString().length > 0) return;
+        const diffX = e.clientX - startX;
+        const diffY = e.clientY - startY;
+        if (Math.abs(diffY) > Math.abs(diffX)) return;
+        if (diffX > threshold) onPrev();
+        if (diffX < -threshold) onNext();
+    };
 }
 
 function getProgressColor(percent) {
@@ -356,6 +513,9 @@ function renderCard(konuBasligi) {
     }
 
     const card = cards[currentCardIndex] || cards[0];
+    const originalCardIndex = hamCards.findIndex(item => (item.id && card.id) ? item.id === card.id : item === card);
+    const cardItemId = getItemId('flashcard', card.id || `${konuBasligi}-${originalCardIndex}`);
+    card.favoriMi = isItemFavorite(cardItemId, card.favoriMi);
 
     wrapper.innerHTML = `
         <div class="flashcard" id="active-flashcard">
@@ -373,48 +533,30 @@ function renderCard(konuBasligi) {
 
             <div class="flashcard-footer">
                 <span>💡 ${card.ipucu}</span>
-                <button class="flashcard-star ${card.favoriMi ? 'active' : ''}" onclick="toggleFlashcardStar(this, '${konuBasligi}', ${currentCardIndex})">
+                <button class="flashcard-star ${card.favoriMi ? 'active' : ''}" onclick="toggleFlashcardStar(this, '${konuBasligi}', ${originalCardIndex})">
                     ${card.favoriMi ? '★' : '☆'}
                 </button>
             </div>
         </div>
     `;
-// --- MOBİL (SWIPE) VE PC (MOUSE) KAYDIRMA DESTEĞİ BAŞLANGICI ---
-  const flashcardElement = wrapper.firstElementChild; 
-  if (flashcardElement) {
-    let startX = 0;
-    let endX = 0;
+    const flashcardElement = document.getElementById('active-flashcard');
+    applySwipeNavigation(
+        flashcardElement,
+        () => prevFlashcard(konuBasligi),
+        () => nextFlashcard(konuBasligi)
+    );
+}
 
-    const handleDragStart = (e) => {
-      startX = e.type.includes('mouse') ? e.screenX : e.changedTouches[0].screenX;
-    };
-
-    const handleDragEnd = (e) => {
-      endX = e.type.includes('mouse') ? e.screenX : e.changedTouches[0].screenX;
-      handleSwipe();
-    };
-
-    // Mobil Cihazlar İçin Dokunma Olayları
-    flashcardElement.addEventListener('touchstart', handleDragStart, { passive: true });
-    flashcardElement.addEventListener('touchend', handleDragEnd, { passive: true });
-
-    // PC (Bilgisayar) İçin Fare Olayları
-    flashcardElement.addEventListener('mousedown', handleDragStart, { passive: true });
-    flashcardElement.addEventListener('mouseup', handleDragEnd, { passive: true });
-
-    function handleSwipe() {
-      const threshold = 50; // Kaydırma hassasiyeti (px)
-      if (endX < startX - threshold) {
-        // Sola kaydırıldı -> Sonraki Flashcard
-        nextFlashcard(konuBasligi);
-      }
-      if (endX > startX + threshold) {
-        // Sağa kaydırıldı -> Önceki Flashcard
-        prevFlashcard(konuBasligi);
-      }
-    }
-  }
-  // --- MOBİL (SWIPE) VE PC (MOUSE) KAYDIRMA DESTEĞİ BİTİŞİ ---
+function toggleFlashcardStar(btnElement, konuBasligi, originalIndex) {
+    const konu = getKonuVerisi(konuBasligi);
+    if (!konu || !konu.flashcards || !konu.flashcards[originalIndex]) return;
+    const card = konu.flashcards[originalIndex];
+    const itemId = getItemId('flashcard', card.id || `${konuBasligi}-${originalIndex}`);
+    const nextState = !isItemFavorite(itemId);
+    card.favoriMi = nextState;
+    setItemFavorite(itemId, nextState);
+    updateStarUI(btnElement, nextState);
+    refreshFavoriteSurfaces();
 }
 
 function nextFlashcard(konuBasligi) {
@@ -660,6 +802,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadMoreFeed(window.aktifFeedVerisi);
                 }
             }
+
+            if (document.getElementById('profile-favorites-feed') && window.profileFavoriteFeedData && window.profileFavoriteFeedIndex < window.profileFavoriteFeedData.length) {
+                if ((mainContentArea.scrollTop + mainContentArea.clientHeight) >= mainContentArea.scrollHeight - 150) {
+                    loadMoreProfileFavorites();
+                }
+            }
         });
     }
 });
@@ -673,6 +821,8 @@ function loadMoreQA() {
 
     nextItems.forEach((item, index) => {
         const qIndex = qaCurrentIndex + index;
+        const questionItemId = getItemId('question', item.id || `${currentQAKonuBasligi}-${qIndex}`);
+        item.favoriMi = isItemFavorite(questionItemId);
         const cikmisBadge = item.cıkmisSoru || item.sınavYili
             ? `<span class="exam-badge">🔥 Çıkmış Soru (${item.sınavYili || ''})</span>`
             : '';
@@ -684,9 +834,14 @@ function loadMoreQA() {
                         <span class="feed-tag">${item.altKategori || 'Genel'}</span>
                         ${cikmisBadge}
                     </div>
-                    <span style="font-size: 0.75rem; opacity: 0.6; font-weight: 700;">
-                        Soru ${qIndex + 1} / ${activeQAs.length}
-                    </span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size: 0.75rem; opacity: 0.6; font-weight: 700;">
+                            Soru ${qIndex + 1} / ${activeQAs.length}
+                        </span>
+                        <button class="star-btn ${item.favoriMi ? 'active' : ''}" onclick="toggleQuestionStar(this, activeQAs[${qIndex}], '${currentQAKonuBasligi}', ${qIndex})">
+                            ${item.favoriMi ? '★' : '☆'}
+                        </button>
+                    </div>
                 </div>
 
                 <div class="qa-question-text">${item.soru}</div>
@@ -743,13 +898,44 @@ function checkAnswer(qIndex, selectedIndex, correctIndex) {
     }
 }
 
+function toggleQuestionStar(btnElement, soru, konuBasligi = 'Genel', soruIndex = 0) {
+    if (!soru) return;
+    const itemId = getItemId('question', soru.id || `${konuBasligi}-${soruIndex}`);
+    const nextState = !isItemFavorite(itemId);
+    soru.favoriMi = nextState;
+    setItemFavorite(itemId, nextState);
+    updateStarUI(btnElement, nextState);
+    refreshFavoriteSurfaces();
+}
+
 // --- MEVZUAT FEED ÇİZİMİ ---
 let currentFeedIndex = 0;
 const FEED_LOAD_COUNT = 4;
 window.aktifFeedVerisi = [];
 
 function initFeed(feedVerileri) {
-    window.aktifFeedVerisi = feedVerileri;
+    const baseFeed = (feedVerileri || []).map((item, index) => {
+        const itemId = getItemId('feed', item.id || index);
+        item.favoriMi = isItemFavorite(itemId, item.favoriMi);
+        return {
+            id: itemId,
+            etiket: item.etiket,
+            metin: item.metin,
+            ipucu: item.ipucu,
+            favoriMi: item.favoriMi,
+            tip: 'Mevzuat Notu',
+            source: 'mevzuat',
+            feedIndex: index
+        };
+    });
+
+    const favoriteFeedItems = getAllFavoriteEntries().map(item => ({
+        ...item,
+        source: 'favorite'
+    }));
+
+    const normalFeedItems = baseFeed.filter(item => !item.favoriMi);
+    window.aktifFeedVerisi = [...favoriteFeedItems, ...normalFeedItems];
     document.getElementById('page-feed').innerHTML = '<div id="feed-container"></div>';
     currentFeedIndex = 0;
     loadMoreFeed(window.aktifFeedVerisi);
@@ -769,6 +955,7 @@ function loadMoreFeed(feedVerileri) {
             <div class="feed-card" style="animation-delay: ${index * 0.1}s;">
                 <div class="feed-tag-row" style="margin-bottom:10px;">
                     <span class="feed-tag">${item.etiket}</span>
+                    <span style="font-size:0.68rem; opacity:0.65;">${item.tip || ''}</span>
                 </div>
 
                 <div class="feed-text">${item.metin}</div>
@@ -778,7 +965,7 @@ function loadMoreFeed(feedVerileri) {
                         ${item.ipucu ? `<button class="action-btn" onclick="openModal('💡 Sınav İpucu', '${item.ipucu.replace(/'/g, "\\'")}')">💡 İpucu</button>` : ''}
                     </div>
 
-                    <button class="star-btn ${item.favoriMi ? 'active' : ''}" onclick="toggleStar(this, ${itemId})">
+                    <button class="star-btn ${item.favoriMi ? 'active' : ''}" onclick="${item.source === 'mevzuat' ? `toggleStar(this, ${item.feedIndex})` : `toggleFavoriteById(this, '${item.id}')`}">
                         ${item.favoriMi ? '★' : '☆'}
                     </button>
                 </div>
@@ -793,6 +980,9 @@ function loadMoreFeed(feedVerileri) {
 // --- SINAV MENÜSÜ ---
 function renderQuizMenu() {
     const quizPage = document.getElementById('page-quiz');
+    const allWrong = getAllWrongQuestions();
+    const allQuestions = getAllQuestionsPool();
+    const starredQuestions = getStarredQuestionsPool();
 
     quizPage.innerHTML = `
         <div class="quiz-header">
@@ -800,59 +990,32 @@ function renderQuizMenu() {
             <p>Kendini test et ve eksiklerini kapat</p>
         </div>
 
-        <div class="action-card power-up" onclick="openModal('🧠 Güçlendir', 'Yanlış yaptığın sorulardan oluşan kişiselleştirilmiş havuz yakında aktif olacak.')">
+        <div class="action-card power-up" onclick="startMainExamMode('guclendir')">
             <div class="icon">💪</div>
             <div class="info">
                 <h3>Güçlendir</h3>
-                <p>Yanlış yaptığın sorulardan oluşan antrenman havuzu.</p>
+                <p>Tüm konulardaki yanlış yaptığın sorulardan karma antrenman.</p>
             </div>
-            <div class="badge">12 Soru</div>
+            <div class="badge">${Math.min(allWrong.length, MAX_EXAM_QUESTIONS)} Soru</div>
         </div>
 
-        <div class="action-card exam" onclick="openModal('⏱️ Türkiye Geneli Deneme', '80 Soruluk GYS Formatında tam deneme sınavı yakında açılacak.')">
+        <div class="action-card exam" onclick="startMainExamMode('gercek-deneme')">
             <div class="icon">📝</div>
             <div class="info">
                 <h3>Gerçek Deneme</h3>
-                <p>80 Soru, 100 Dakika. Orijinal sınav simülasyonu.</p>
+                <p>Tüm konulardan harmanlanmış 25 soruluk deneme.</p>
             </div>
+            <div class="badge" style="background:#fee2e2;color:#ef4444;">${Math.min(allQuestions.length, MAX_EXAM_QUESTIONS)} Soru</div>
         </div>
 
-        <div class="action-card" onclick="startSampleQuiz()">
+        <div class="action-card" onclick="startMainExamMode('konu-tarama')">
             <div class="icon">🎯</div>
             <div class="info">
                 <h3>Konu Tarama Testleri</h3>
-                <p>Hızlıca 1 soru çözerek arayüzü test et.</p>
+                <p>Yıldızlanan soru ve konulara göre odaklı soru havuzu.</p>
             </div>
+            <div class="badge" style="background:#dbeafe;color:#3b82f6;">${Math.min(starredQuestions.length, MAX_EXAM_QUESTIONS)} Soru</div>
         </div>
-    `;
-}
-
-function startSampleQuiz() {
-    const quizPage = document.getElementById('page-quiz');
-
-    quizPage.innerHTML = `
-        <div class="active-quiz-header">
-            <div class="quiz-progress">Soru 1 / 10</div>
-            <div class="quiz-timer">00:45</div>
-        </div>
-
-        <div class="question-card">
-            <div class="feed-tag" style="display:inline-block; margin-bottom:15px;">657 Sayılı Kanun</div>
-
-            <div class="question-text">
-                Devlet memurlarına verilen <b>"Kademe ilerlemesinin durdurulması"</b> cezası ile ilgili olarak,
-                cezanın silinmesi için yetkili makama başvuru süresi kaç yıldır?
-            </div>
-
-            <button class="option-btn" onclick="selectOption(this)"><span class="option-letter">A</span> 3 Yıl</button>
-            <button class="option-btn" onclick="selectOption(this)"><span class="option-letter">B</span> 5 Yıl</button>
-            <button class="option-btn" onclick="selectOption(this)"><span class="option-letter">C</span> 10 Yıl</button>
-            <button class="option-btn" onclick="selectOption(this)"><span class="option-letter">D</span> Silinmez</button>
-        </div>
-
-        <button class="next-btn" onclick="openModal('Tebrikler', 'Sınav modülü harika çalışıyor! <br><br> (Doğru Cevap C şıkkıydı)')">
-            Sonraki Soru ➔
-        </button>
     `;
 }
 
@@ -861,10 +1024,200 @@ function selectOption(btn) {
     btn.classList.add('selected');
 }
 
+let mainExamQuestions = [];
+let mainExamAnswers = {};
+let mainExamCurrentIndex = 0;
+let mainExamType = 'gercek-deneme';
+
+function getAllQuestionsPool() {
+    const allQuestions = [];
+    Object.entries(window.examsDB || {}).forEach(([konuBasligi, examData]) => {
+        (examData?.konuTestleri || []).forEach(test => {
+            (test.sorular || []).forEach((soru, soruIndex) => {
+                allQuestions.push({
+                    ...soru,
+                    kaynakKonu: konuBasligi,
+                    fallbackId: `${konuBasligi}-${test.id || test.baslik}-${soruIndex}`
+                });
+            });
+        });
+    });
+    return allQuestions;
+}
+
+function getAllWrongQuestions() {
+    const wrongMap = {};
+    try {
+        Object.assign(wrongMap, JSON.parse(localStorage.getItem(WRONG_QUESTIONS_STORAGE_KEY) || '{}'));
+    } catch (e) {}
+
+    const wrongPool = [];
+    Object.entries(wrongMap).forEach(([konuBasligi, questions]) => {
+        (questions || []).forEach((soru, index) => {
+            wrongPool.push({
+                ...soru,
+                kaynakKonu: konuBasligi,
+                fallbackId: `${konuBasligi}-wrong-${index}`
+            });
+        });
+    });
+    return wrongPool;
+}
+
+function getStarredQuestionsPool() {
+    const starredTopics = new Set();
+    Object.entries(dbEslestirme || {}).forEach(([konuBasligi, konu]) => {
+        if (!konu) return;
+        const hasStarredFlash = (konu.flashcards || []).some((card, idx) =>
+            isItemFavorite(getItemId('flashcard', card.id || `${konuBasligi}-${idx}`), card.favoriMi)
+        );
+        const hasStarredMadde = (konu.maddeler || []).some((madde, idx) =>
+            isItemFavorite(getItemId('education', madde.id || `${konuBasligi}-${madde.maddeNo || idx}`), madde.favoriMi)
+        );
+        if (hasStarredFlash || hasStarredMadde) starredTopics.add(konuBasligi);
+    });
+
+    return getAllQuestionsPool().filter((soru, index) => {
+        const itemId = getItemId('question', soru.id || soru.fallbackId || `global-${index}`);
+        return isItemFavorite(itemId, soru.favoriMi) || starredTopics.has(soru.kaynakKonu);
+    });
+}
+
+function startMainExamMode(examType) {
+    mainExamType = examType;
+    if (examType === 'guclendir') mainExamQuestions = getAllWrongQuestions();
+    if (examType === 'gercek-deneme') mainExamQuestions = getAllQuestionsPool();
+    if (examType === 'konu-tarama') mainExamQuestions = getStarredQuestionsPool();
+
+    if (!mainExamQuestions.length) {
+        openModal('Bilgi', 'Bu sınav tipi için yeterli soru bulunamadı.');
+        return;
+    }
+
+    mainExamQuestions = shuffleArray(mainExamQuestions).slice(0, MAX_EXAM_QUESTIONS);
+    mainExamAnswers = {};
+    mainExamCurrentIndex = 0;
+    renderMainExamQuestion();
+}
+
+function renderMainExamQuestion() {
+    const quizPage = document.getElementById('page-quiz');
+    const soru = mainExamQuestions[mainExamCurrentIndex];
+    const itemId = getItemId('question', soru.id || soru.fallbackId || `main-${mainExamCurrentIndex}`);
+    soru.favoriMi = isItemFavorite(itemId, soru.favoriMi);
+
+    quizPage.innerHTML = `
+        <button class="back-btn" onclick="renderQuizMenu()">⬅ Sınav Merkezine Dön</button>
+        <div class="active-quiz-header">
+            <div class="quiz-progress">Soru ${mainExamCurrentIndex + 1} / ${mainExamQuestions.length}</div>
+        </div>
+        <div class="question-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; gap:10px;">
+                <div class="feed-tag">${soru.kaynakKonu || 'Karma'} • ${soru.altKategori || 'Genel'}</div>
+                <button class="star-btn ${soru.favoriMi ? 'active' : ''}" onclick="toggleQuestionStar(this, mainExamQuestions[${mainExamCurrentIndex}], '${soru.kaynakKonu || 'Genel'}', ${mainExamCurrentIndex})">
+                    ${soru.favoriMi ? '★' : '☆'}
+                </button>
+            </div>
+            <div class="question-text">${soru.soru}</div>
+            ${soru.secenekler.map((secenek, i) => `
+                <button class="option-btn ${mainExamAnswers[mainExamCurrentIndex] === i ? 'selected' : ''}" onclick="selectMainExamOption(${i})">
+                    <span class="option-letter">${String.fromCharCode(65 + i)}</span> ${secenek.substring(3)}
+                </button>
+            `).join('')}
+        </div>
+        <button class="next-btn" onclick="${mainExamCurrentIndex === mainExamQuestions.length - 1 ? 'finishMainExam()' : 'goNextMainExamQuestion()'}">
+            ${mainExamCurrentIndex === mainExamQuestions.length - 1 ? 'Sınavı Bitir ✔️' : 'Sonraki Soru ➔'}
+        </button>
+    `;
+}
+
+function selectMainExamOption(optionIndex) {
+    mainExamAnswers[mainExamCurrentIndex] = optionIndex;
+    setTimeout(() => {
+        if (mainExamCurrentIndex < mainExamQuestions.length - 1) {
+            mainExamCurrentIndex++;
+            renderMainExamQuestion();
+        } else {
+            finishMainExam();
+        }
+    }, 150);
+}
+
+function goNextMainExamQuestion() {
+    if (mainExamCurrentIndex < mainExamQuestions.length - 1) {
+        mainExamCurrentIndex++;
+        renderMainExamQuestion();
+    } else {
+        finishMainExam();
+    }
+}
+
+function finishMainExam() {
+    const quizPage = document.getElementById('page-quiz');
+    let dogru = 0;
+    let yanlis = 0;
+    let bos = 0;
+    let gridHTML = `<div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:15px;">`;
+
+    mainExamQuestions.forEach((soru, index) => {
+        const userAnswer = mainExamAnswers[index];
+        if (userAnswer === undefined) bos++;
+        else if (userAnswer === soru.dogruIndex) dogru++;
+        else yanlis++;
+        const color = userAnswer === undefined ? '#94a3b8' : (userAnswer === soru.dogruIndex ? '#10b981' : '#ef4444');
+        gridHTML += `<div onclick="reviewMainExamQuestion(${index})" style="background:${color}; color:white; padding:10px 0; border-radius:8px; text-align:center; font-weight:700; cursor:pointer;">${index + 1}</div>`;
+    });
+    gridHTML += `</div>`;
+
+    const oran = Math.round((dogru / mainExamQuestions.length) * 100);
+    quizPage.innerHTML = `
+        <button class="back-btn" onclick="renderQuizMenu()">⬅ Sınav Merkezine Dön</button>
+        <div class="question-card">
+            <h2 style="margin-bottom:10px;">Sınav Sonucu</h2>
+            <div style="font-size:2rem; font-weight:800; color:${getProgressColor(oran)};">%${oran}</div>
+            <div style="display:flex; gap:12px; margin-top:12px;">
+                <div><b style="color:#10b981;">${dogru}</b><div style="font-size:0.75rem;">Doğru</div></div>
+                <div><b style="color:#ef4444;">${yanlis}</b><div style="font-size:0.75rem;">Yanlış</div></div>
+                <div><b style="color:#94a3b8;">${bos}</b><div style="font-size:0.75rem;">Boş</div></div>
+            </div>
+            <h3 style="font-size:0.95rem; margin-top:16px;">Soru Analizi</h3>
+            ${gridHTML}
+        </div>
+    `;
+}
+
+function reviewMainExamQuestion(index) {
+    const quizPage = document.getElementById('page-quiz');
+    const soru = mainExamQuestions[index];
+    const userCevap = mainExamAnswers[index];
+
+    quizPage.innerHTML = `
+        <button class="back-btn" onclick="finishMainExam()">⬅ Sonuçlara Dön</button>
+        <div class="question-card">
+            <div class="feed-tag" style="display:inline-block; margin-bottom:12px;">${soru.kaynakKonu || 'Karma'} • ${soru.altKategori || 'Genel'}</div>
+            <div class="question-text">${soru.soru}</div>
+            ${soru.secenekler.map((secenek, i) => {
+                const isSelected = i === userCevap;
+                const isCorrect = i === soru.dogruIndex;
+                const btnClass = isCorrect ? 'correct' : (isSelected ? 'wrong' : '');
+                const label = isSelected && isCorrect
+                    ? '<span class="review-badge selected-correct">Senin Cevabın ✅</span>'
+                    : isSelected
+                        ? '<span class="review-badge selected-wrong">Senin Cevabın ❌</span>'
+                        : isCorrect
+                            ? '<span class="review-badge correct-only">Doğru Cevap</span>'
+                            : '';
+                return `<button class="option-btn ${btnClass}" disabled style="cursor:default;"> <span class="option-letter">${String.fromCharCode(65 + i)}</span> ${secenek.substring(3)} ${label}</button>`;
+            }).join('')}
+            <div class="qa-explanation show"><b>📚 Çözüm & Açıklama:</b> ${soru.detay || 'Açıklama bulunmuyor.'}</div>
+        </div>
+    `;
+}
+
 // --- PROFİL ---
 function renderProfile(veri) {
     const profilePage = document.getElementById('page-profile');
-    const favoriNotlar = veri.mevzuatFeed.filter(item => item.favoriMi);
+    const favoriNotlar = getAllFavoriteEntries();
 
     profilePage.innerHTML = `
         <div class="profile-header-card">
@@ -883,15 +1236,35 @@ function renderProfile(veri) {
         </div>
 
         <div class="section-title" style="text-align:left;">⭐ Önemli Notlar</div>
-        <div class="saved-notes-list">
-            ${favoriNotlar.length > 0 ? favoriNotlar.map(not => `
-                <div class="feed-card" style="padding:15px;">
-                    <div class="feed-tag" style="display:inline-block; margin-bottom:8px;">${not.etiket}</div>
-                    <div style="font-size: 0.85rem;">${not.metin}</div>
-                </div>
-            `).join('') : '<p style="opacity:0.6; font-size:0.85rem;">Henüz favoriye aldığın bir not yok.</p>'}
-        </div>
+        <div id="profile-favorites-feed" class="saved-notes-list"></div>
     `;
+
+    if (favoriNotlar.length === 0) {
+        const container = document.getElementById('profile-favorites-feed');
+        if (container) container.innerHTML = '<p style="opacity:0.6; font-size:0.85rem;">Henüz favoriye aldığın bir not yok.</p>';
+        return;
+    }
+    window.profileFavoriteFeedData = favoriNotlar;
+    window.profileFavoriteFeedIndex = 0;
+    loadMoreProfileFavorites();
+}
+
+function loadMoreProfileFavorites() {
+    const container = document.getElementById('profile-favorites-feed');
+    const data = window.profileFavoriteFeedData || [];
+    if (!container || window.profileFavoriteFeedIndex >= data.length) return;
+
+    const nextItems = data.slice(window.profileFavoriteFeedIndex, window.profileFavoriteFeedIndex + FEED_LOAD_COUNT);
+    container.insertAdjacentHTML('beforeend', nextItems.map(item => `
+        <div class="feed-card" style="padding:15px;">
+            <div class="feed-tag-row" style="margin-bottom:8px;">
+                <span class="feed-tag">${item.etiket}</span>
+                <span style="font-size:0.68rem; opacity:0.65;">${item.tip || ''}</span>
+            </div>
+            <div style="font-size: 0.85rem;">${item.metin}</div>
+        </div>
+    `).join(''));
+    window.profileFavoriteFeedIndex += FEED_LOAD_COUNT;
 }
 
 // --- RESMİ SINAV MODU VE SİMÜLASYON MOTORU ---
@@ -946,7 +1319,7 @@ function openExamMenu(konuBasligi) {
 // --- LOCALSTORAGE YANLIŞ SORU YÖNETİMİ ---
 function getSavedWrongQuestions(konuBasligi) {
     try {
-        const saved = JSON.parse(localStorage.getItem('gys_yanlis_sorular') || '{}');
+        const saved = JSON.parse(localStorage.getItem(WRONG_QUESTIONS_STORAGE_KEY) || '{}');
         return saved[konuBasligi] || [];
     } catch(e) {
         return [];
@@ -955,21 +1328,21 @@ function getSavedWrongQuestions(konuBasligi) {
 
 function saveWrongQuestion(konuBasligi, soru) {
     try {
-        let saved = JSON.parse(localStorage.getItem('gys_yanlis_sorular') || '{}');
+        let saved = JSON.parse(localStorage.getItem(WRONG_QUESTIONS_STORAGE_KEY) || '{}');
         if (!saved[konuBasligi]) saved[konuBasligi] = [];
         if (!saved[konuBasligi].some(q => q.soru === soru.soru)) {
             saved[konuBasligi].push(soru);
         }
-        localStorage.setItem('gys_yanlis_sorular', JSON.stringify(saved));
+        localStorage.setItem(WRONG_QUESTIONS_STORAGE_KEY, JSON.stringify(saved));
     } catch(e) {}
 }
 
 function removeWrongQuestion(konuBasligi, soru) {
     try {
-        let saved = JSON.parse(localStorage.getItem('gys_yanlis_sorular') || '{}');
+        let saved = JSON.parse(localStorage.getItem(WRONG_QUESTIONS_STORAGE_KEY) || '{}');
         if (saved[konuBasligi]) {
             saved[konuBasligi] = saved[konuBasligi].filter(q => q.soru !== soru.soru);
-            localStorage.setItem('gys_yanlis_sorular', JSON.stringify(saved));
+            localStorage.setItem(WRONG_QUESTIONS_STORAGE_KEY, JSON.stringify(saved));
         }
     } catch(e) {}
 }
@@ -1012,7 +1385,7 @@ function showFormalExamPreScreen(konuBasligi, examType = 'cikmis') {
         return;
     }
 
-    kaynakSorular = kaynakSorular.sort(() => Math.random() - 0.5).slice(0, MAX_EXAM_QUESTIONS);
+    kaynakSorular = shuffleArray(kaynakSorular).slice(0, MAX_EXAM_QUESTIONS);
     const toplamSure = kaynakSorular.length * SECONDS_PER_QUESTION;
     
     let baslikText = 'Çıkmış Sorular Sınavı';
@@ -1070,6 +1443,8 @@ function renderFormalQuestion(konuBasligi) {
     const detailPage = document.getElementById('page-subject-detail');
     const soru = formalExamQuestions[formalExamCurrentIndex];
     const isLastQuestion = formalExamCurrentIndex === formalExamQuestions.length - 1;
+    const questionItemId = getItemId('question', soru.id || `${konuBasligi}-${formalExamCurrentIndex}`);
+    soru.favoriMi = isItemFavorite(questionItemId, soru.favoriMi);
 
     const navButtonsHTML = `
         <div style="display:flex; gap:10px; margin: 10px 0;">
@@ -1102,7 +1477,12 @@ function renderFormalQuestion(konuBasligi) {
         ${navButtonsHTML}
 
         <div class="question-card" style="box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-top: 5px;">
-            <div class="feed-tag" style="display:inline-block; margin-bottom:15px; background: #fee2e2; color: #ef4444;">${soru.altKategori || 'Karma'} (${soru.sınavYili || 'Genel'})</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:15px;">
+                <div class="feed-tag" style="display:inline-block; background: #fee2e2; color: #ef4444;">${soru.altKategori || 'Karma'} (${soru.sınavYili || 'Genel'})</div>
+                <button class="star-btn ${soru.favoriMi ? 'active' : ''}" onclick="toggleQuestionStar(this, formalExamQuestions[${formalExamCurrentIndex}], '${konuBasligi}', ${formalExamCurrentIndex})">
+                    ${soru.favoriMi ? '★' : '☆'}
+                </button>
+            </div>
             <div class="question-text">${soru.soru}</div>
 
             ${soru.secenekler.map((secenek, i) => {
@@ -1294,12 +1674,22 @@ function reviewFormalQuestion(index, konuBasligi) {
 
             ${soru.secenekler.map((secenek, i) => {
                 let btnClass = '';
-                if (i === soru.dogruIndex) btnClass = 'correct';
-                else if (i === userCevap && userCevap !== soru.dogruIndex) btnClass = 'wrong';
+                const isSelected = i === userCevap;
+                const isCorrect = i === soru.dogruIndex;
+                if (isCorrect) btnClass = 'correct';
+                if (isSelected && !isCorrect) btnClass = 'wrong';
+                const durumEtiketi = isSelected && isCorrect
+                    ? '<span class="review-badge selected-correct">Senin Cevabın ✅</span>'
+                    : isSelected
+                        ? '<span class="review-badge selected-wrong">Senin Cevabın ❌</span>'
+                        : isCorrect
+                            ? '<span class="review-badge correct-only">Doğru Cevap</span>'
+                            : '';
 
                 return `
-                <button class="option-btn ${btnClass}" disabled style="margin-bottom:10px; cursor:default;">
+                <button class="option-btn ${btnClass} ${isSelected ? 'review-selected-option' : ''}" disabled style="margin-bottom:10px; cursor:default;">
                     <span class="option-letter">${String.fromCharCode(65 + i)}</span> ${secenek.substring(3)}
+                    ${durumEtiketi}
                 </button>
                 `;
             }).join('')}

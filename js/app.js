@@ -65,7 +65,7 @@ gorevKonulari: [
     { baslik: "Kamu Mali Yönetim; Kontrol ve Faaliyetler", ikon: "📊", tamamlanma: 9 },
     { baslik: "İdari Yargılama Usulü", ikon: "⚖️", tamamlanma: 11 }
 ],
-    guncelMevzuat: [
+    guncelMevzuat: window.legalUpdatesSeed || [
         { tarih: "12 MART 2024", baslik: "8. Yargı Paketi Süre Değişikliği", detay: "İtiraz ve istinaf süreleri tüm mahkemelerde '2 hafta' olarak yeknesak hale getirildi." }
     ],
     mevzuatFeed: [
@@ -73,6 +73,23 @@ gorevKonulari: [
         { etiket: "T.C. Anayasası", metin: "AYM 15 üyeden kurulur. 3 üyeyi TBMM, 12 üyeyi Cumhurbaşkanı seçer.", favoriMi: false }
     ]
 };
+
+async function loadLegalUpdates() {
+    const sourceUrl = window.LEGAL_NEWS_SOURCE_URL;
+    if (!sourceUrl) return;
+
+    try {
+        const res = await fetch(sourceUrl, { cache: 'no-store' });
+        if (!res.ok) return;
+        const payload = await res.json();
+        if (Array.isArray(payload) && payload.length > 0) {
+            db.guncelMevzuat = payload;
+            renderHome(db);
+        }
+    } catch (e) {
+        console.warn('Güncel mevzuat kaynağına erişilemedi, örnek veri kullanılıyor.');
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // localStorage'den kaydedilmiş ilerleme ve istatistikleri yükle
@@ -98,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initFeed(db.mevzuatFeed);
     renderQuizMenu();
     renderProfile(db);
+    loadLegalUpdates();
 
     // Menü Tıklamaları
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -106,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(target === 'quiz') renderQuizMenu();
             if(target === 'home') renderHome(db);
             if(target === 'profile') renderProfile(db);
+            if(target === 'feed') initFeed(db.mevzuatFeed);
             navigateTo(target); 
         });
     });
