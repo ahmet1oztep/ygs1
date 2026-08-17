@@ -229,7 +229,7 @@ function applySwipeNavigation(element, onPrev, onNext, threshold = 45) {
         startY = lastY = e.clientY;
         didSwipe = false;
         if (typeof element.setPointerCapture === 'function') {
-            try { element.setPointerCapture(e.pointerId); } catch (err) {}
+            try { element.setPointerCapture(e.pointerId); } catch (err) { console.warn('Swipe pointer capture skipped.', err); }
         }
     };
 
@@ -1358,12 +1358,14 @@ function renderMainExamQuestion() {
 }
 
 function selectMainExamOption(optionIndex) {
+    const capturedIndex = mainExamCurrentIndex;
     mainExamAnswers[mainExamCurrentIndex] = optionIndex;
     renderMainExamQuestion();
     setTimeout(() => {
-        if (mainExamAnswers[mainExamCurrentIndex] !== optionIndex) return;
-        if (mainExamCurrentIndex < mainExamQuestions.length - 1) {
-            mainExamCurrentIndex++;
+        if (mainExamAnswers[capturedIndex] !== optionIndex) return;
+        if (mainExamCurrentIndex !== capturedIndex) return;
+        if (capturedIndex < mainExamQuestions.length - 1) {
+            mainExamCurrentIndex = capturedIndex + 1;
             renderMainExamQuestion();
         }
     }, 180);
@@ -1487,7 +1489,7 @@ function getTopicTrackableTotal(konuBasligi) {
 }
 
 function getTopicFavoriteCount(konuBasligi) {
-    return getAllFavoriteEntries().filter(item => item.konu === konuBasligi).length;
+    return getAllFavoriteEntries().filter(item => resolveTopicName(item.konu || item.etiket || '') === konuBasligi).length;
 }
 
 function buildProfileTopicSummaries() {
