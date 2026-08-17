@@ -12,7 +12,7 @@ function navigateTo(targetId, isBack = false) {
     const targetPage = document.getElementById('page-' + targetId);
     if(targetPage) targetPage.classList.add('active');
 
-    // 4. Alt menü ikonlarının renklerini ayarla
+    // 4. Alt menü ve sidebar ikonlarının renklerini ayarla
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('active');
         if(btn.getAttribute('data-target') === targetId) btn.classList.add('active');
@@ -27,13 +27,13 @@ function navigateTo(targetId, isBack = false) {
 // Cihazın / Tarayıcının Geri Tuşuna Basıldığında Çalışacak Dinleyici
 window.addEventListener('popstate', (e) => {
     if(e.state && e.state.page) {
-        if(e.state.page === 'home') renderHome(db); // <-- BURAYI EKLE
-        navigateTo(e.state.page, true); // Alt menülere dön
+        if(e.state.page === 'home') renderHome(db);
+        navigateTo(e.state.page, true);
     } else if (e.state && e.state.konu) {
-        openSubjectDetail(e.state.konu, true); // Konu içine dön
+        openSubjectDetail(e.state.konu, true);
     } else {
-        renderHome(db); // <-- BURAYI EKLE
-        navigateTo('home', true); // Hiçbir şey yoksa Ana Sayfaya dön
+        renderHome(db);
+        navigateTo('home', true);
     }
 });
 
@@ -91,6 +91,35 @@ async function loadLegalUpdates() {
     }
 }
 
+// --- SIDEBAR GÜNCELLEME ---
+function updateSidebarStatus() {
+    const pct = getSessionProgress();
+    const streak = db?.kullanici?.istatistik?.calismaSerisi || 0;
+    const name = db?.kullanici ? `${db.kullanici.ad} ${db.kullanici.soyad.charAt(0)}.` : '';
+    const avatar = db?.kullanici?.ad?.charAt(0) || '?';
+
+    const el = {
+        pct: document.getElementById('sidebar-progress-pct'),
+        streak: document.getElementById('sidebar-streak'),
+        name: document.getElementById('sidebar-user-name'),
+        avatar: document.getElementById('sidebar-avatar')
+    };
+    if (el.pct) el.pct.textContent = `%${pct}`;
+    if (el.streak) el.streak.textContent = `${streak}🔥`;
+    if (el.name) el.name.textContent = name;
+    if (el.avatar) el.avatar.textContent = avatar;
+}
+
+// updateDesktopProgressStatus artık sidebar'ı da güncelliyor
+function updateDesktopProgressStatus() {
+    updateSidebarStatus();
+    // Eski right-rail elementleri (artık yok ama güvenli kontrol)
+    const progressValue = document.getElementById('desktop-progress-value');
+    const streakValue = document.getElementById('desktop-streak-value');
+    if (progressValue) progressValue.textContent = `%${getSessionProgress()}`;
+    if (streakValue) streakValue.textContent = `${db?.kullanici?.istatistik?.calismaSerisi || 0} gün seri`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // localStorage'den kaydedilmiş ilerleme ve istatistikleri yükle
     const savedProgress = localStorage.getItem('gys_progress');
@@ -105,7 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('gys_tema');
     if (savedTheme === 'dark') {
         document.body.classList.add('dark-theme');
-        document.getElementById('theme-toggle').innerText = '☀️';
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) toggle.innerText = '☀️';
     }
 
     console.log("YUKLENEN anayasaDB:", window.anayasaDB);
@@ -116,9 +146,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderQuizMenu();
     renderProfile(db);
     loadLegalUpdates();
-    if (typeof updateDesktopProgressStatus === 'function') updateDesktopProgressStatus();
+    updateDesktopProgressStatus();
 
-    // Menü Tıklamaları
+    // Menü Tıklamaları (hem bottom-nav hem sidebar)
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', (e) => { 
             const target = e.currentTarget.getAttribute('data-target');
@@ -130,18 +160,81 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Tema Değiştirici
-    const themeBtn = document.getElementById('theme-toggle');
-    if (themeBtn) {
-        themeBtn.addEventListener('click', () => {
-            document.body.classList.toggle('dark-theme');
-            const isDark = document.body.classList.contains('dark-theme');
-            themeBtn.innerText = isDark ? '☀️' : '🌙';
-            localStorage.setItem('gys_tema', isDark ? 'dark' : 'light');
-        });
+    // Tema Değiştirici (hem header butonu hem sidebar butonu)
+    function applyThemeToggle() {
+        document.body.classList.toggle('dark-theme');
+        const isDark = document.body.classList.contains('dark-theme');
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) toggle.innerText = isDark ? '☀️' : '🌙';
+        localStorage.setItem('gys_tema', isDark ? 'dark' : 'light');
     }
+
+    const themeBtn = document.getElementById('theme-toggle');
+    if (themeBtn) themeBtn.addEventListener('click', applyThemeToggle);
+
+    const sidebarThemeBtn = document.getElementById('sidebar-theme-btn');
+    if (sidebarThemeBtn) sidebarThemeBtn.addEventListener('click', applyThemeToggle);
 
     // İlk açılışta state oluştur
     history.replaceState({ page: 'home' }, "", "#home");
     navigateTo('home', true);
+
+    // Günlük bildirim hatırlatma izni kontrolü
+    requestDailyNotificationPermission();
 });
+
+// --- GÜNLÜK BİLDİRİM HATIRLATMA ---
+function requestDailyNotificationPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+        scheduleDailyReminder();
+        return;
+    }
+    // İzin henüz verilmemişse - sadece bir kez sor (önceki oturumda reddedilmediyse)
+    if (Notification.permission !== 'denied' && !localStorage.getItem('gys_notif_asked')) {
+        setTimeout(() => {
+            Notification.requestPermission().then(permission => {
+                localStorage.setItem('gys_notif_asked', '1');
+                if (permission === 'granted') scheduleDailyReminder();
+            });
+        }, 8000); // Sayfa yüklendikten 8 saniye sonra sor
+    }
+}
+
+function scheduleDailyReminder() {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const REMINDER_KEY = 'gys_last_reminder_day';
+    const today = new Date().toDateString();
+    if (localStorage.getItem(REMINDER_KEY) === today) return; // Bugün zaten gösterildi
+
+    // Şu an saat 19:00-21:00 arasındaysa hatırlatma göster
+    const hour = new Date().getHours();
+    if (hour >= 19 && hour < 21) {
+        new Notification('📚 GYS Pro Hatırlatıcı', {
+            body: 'Bugün çalışma hedefine ulaştın mı? Devam etmek için tıkla!',
+            tag: 'gys-daily'
+        });
+        localStorage.setItem(REMINDER_KEY, today);
+    }
+}
+
+// Bildirimleri profil sayfasından elle açma/kontrol fonksiyonu
+function toggleNotificationPermission() {
+    if (!('Notification' in window)) {
+        openModal('ℹ️ Bildirim', 'Tarayıcınız bildirimleri desteklemiyor.');
+        return;
+    }
+    if (Notification.permission === 'granted') {
+        openModal('✅ Bildirimler Açık', 'Günlük çalışma hatırlatmaları etkinleştirilmiş durumda. Her gün 19:00-21:00 arasında bildirim alacaksınız.');
+    } else if (Notification.permission === 'denied') {
+        openModal('🔕 Bildirimler Kapalı', 'Tarayıcı ayarlarından bu site için bildirimlere izin vererek tekrar aktifleştirebilirsiniz.');
+    } else {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                localStorage.setItem('gys_notif_asked', '1');
+                openModal('✅ Bildirimler Açıldı', 'Günlük çalışma hatırlatmaları aktif edildi! Her gün 19:00-21:00 arası bildirim alacaksınız.');
+                scheduleDailyReminder();
+            }
+        });
+    }
+}

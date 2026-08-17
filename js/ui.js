@@ -365,21 +365,21 @@ function filtreyeGoreGetir(secilenEtiket, flashcards) {
 
 // --- GÜNLÜK MOTİVASYON ---
 const DAILY_MOTIVATIONS = [
-    "Küçük adımlar büyük zirvelere çıkar. Bugün bir adım daha at.",
-    "Sınav sana hazırsın; her okuduğun satır bunun kanıtı.",
-    "Zorlu anlarda vazgeçmek kolay, ama başarmak kalıcı.",
+    "Küçük adımlar büyük zirvelere ulaştırır. Bugün bir adım daha at.",
+    "Sen sınava hazırsın; her okuduğun satır bunun kanıtıdır.",
+    "Zorlu anlarda vazgeçmek kolaydır, ama başarmak kalıcıdır.",
     "Bugün öğrendiğin bir madde, sınavda bir soruyu çözecek.",
     "Rakiplerin dinlenirken sen çalışıyorsun — bu fark yaratır.",
     "Her tekrar, bilgiyi uzun süreli belleğe işler. Devam et.",
     "Başarı, her gün biraz daha iyi olmak demektir.",
-    "Sabır ve istikrar, zekanın önüne geçer. Sen istikrarlısın.",
-    "Hata yapmak öğrenmenin parçasıdır; asıl hata durmaktır.",
+    "Sabır ve istikrar, zekânın önüne geçer. Sen istikrarlısın.",
+    "Hata yapmak öğrenmenin bir parçasıdır; asıl hata durmaktır.",
     "Hedefin net, yolun açık. Geri adım yok.",
-    "Bu sınav seni tanımlamıyor; ama geçmeye olan kararlılığın tanımlıyor.",
-    "Bugünün tembelliği yarının pişmanlığı olur. Sen daha iyisini hak ediyorsun.",
-    "Her konu anlatımı, seni rakiplerinin bir adım önüne taşıyor.",
-    "Yorgunluk geçici, başarı kalıcı. Biraz daha.",
-    "Sınava hazırlanmak maraton koşmak gibidir; ritmi koru."
+    "Bu sınav seni tanımlamaz; seni tanımlayan, onu geçmeye olan kararlılığındır.",
+    "Bugünün tembelliği, yarının pişmanlığı olur. Sen daha iyisini hak ediyorsun.",
+    "Her konu anlatımı, seni rakiplerinin bir adım önüne taşır.",
+    "Yorgunluk geçicidir, başarı kalıcıdır. Biraz daha devam et.",
+    "Sınava hazırlanmak maraton koşmak gibidir; tempoyu koru."
 ];
 
 function getDailyMotivation() {
@@ -696,6 +696,11 @@ function renderCard(konuBasligi) {
                     ${card.favoriMi ? '★' : '☆'}
                 </button>
             </div>
+        </div>
+
+        <div class="card-nav-row">
+            <button class="card-nav-arrow" onclick="prevFlashcard('${konuBasligi}')" ${currentCardIndex === 0 ? 'disabled' : ''}>← Önceki</button>
+            <button class="card-nav-arrow" onclick="nextFlashcard('${konuBasligi}')" ${currentCardIndex >= cards.length - 1 ? 'disabled' : ''}>Sonraki →</button>
         </div>
     `;
     const flashcardElement = document.getElementById('active-flashcard');
@@ -1072,12 +1077,21 @@ let currentFeedIndex = 0;
 const FEED_LOAD_COUNT = 4;
 window.aktifFeedVerisi = [];
 window.activeFeedTopicFilters = new Set();
+window.activeFeedSort = 'konu'; // 'konu' veya 'tip'
 
 function getFilteredFavoriteEntries() {
     const filters = Array.from(window.activeFeedTopicFilters || []);
     const favorites = getAllFavoriteEntries();
-    if (!filters.length) return favorites;
-    return favorites.filter(item => filters.includes(item.konu));
+    let filtered = !filters.length ? favorites : favorites.filter(item => filters.includes(item.konu));
+
+    // Sıralama
+    const sort = window.activeFeedSort || 'konu';
+    if (sort === 'konu') {
+        filtered = [...filtered].sort((a, b) => (a.konu || '').localeCompare(b.konu || '', 'tr'));
+    } else if (sort === 'tip') {
+        filtered = [...filtered].sort((a, b) => (a.tip || '').localeCompare(b.tip || '', 'tr'));
+    }
+    return filtered;
 }
 
 function renderFeedFilterBar() {
@@ -1087,6 +1101,7 @@ function renderFeedFilterBar() {
     const filterLabel = activeFilters.size === 0
         ? 'Tüm Konular ▾'
         : (filtersText.length > 30 ? filtersText.substring(0, 30) + '…' : filtersText) + ' ▾';
+    const activeSort = window.activeFeedSort || 'konu';
     return `
         <div class="feed-page-shell">
             <div class="feed-page-header">
@@ -1097,6 +1112,12 @@ function renderFeedFilterBar() {
                 </div>
                 <button class="feed-clear-btn" onclick="clearFeedTopicFilters()">Tüm filtreleri kaldır</button>
             </div>
+
+            <div class="feed-sort-bar">
+                <button class="feed-sort-btn ${activeSort === 'konu' ? 'active' : ''}" onclick="setFeedSort('konu')">📚 Konuya Göre</button>
+                <button class="feed-sort-btn ${activeSort === 'tip' ? 'active' : ''}" onclick="setFeedSort('tip')">🏷️ Türe Göre</button>
+            </div>
+
             <div class="custom-dropdown-container" style="position: relative; width: 100%;">
                 <button onclick="toggleDropdown('feed-topic-dropdown-box')" class="filter-main-btn" id="feed-topic-filter-btn" style="width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center;">
                     <span id="feed-topic-filter-label">${filterLabel}</span>
@@ -1112,6 +1133,11 @@ function renderFeedFilterBar() {
             <div id="feed-container"></div>
         </div>
     `;
+}
+
+function setFeedSort(sortType) {
+    window.activeFeedSort = sortType;
+    initFeed(db.mevzuatFeed);
 }
 
 function bindFeedTopicEvents() {
@@ -1514,6 +1540,74 @@ function reviewMainExamQuestion(index) {
     `;
 }
 
+// --- SINAV SONUÇ GEÇMİŞİ ---
+const EXAM_HISTORY_KEY = 'gys_exam_history';
+
+function saveExamResult(score, correct, wrong, empty, topicName) {
+    try {
+        let history = JSON.parse(localStorage.getItem(EXAM_HISTORY_KEY) || '[]');
+        history.push({
+            tarih: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+            skor: score,
+            dogru: correct,
+            yanlis: wrong,
+            bos: empty,
+            konu: topicName || 'Genel'
+        });
+        // En fazla 20 sonuç sakla
+        if (history.length > 20) history = history.slice(-20);
+        localStorage.setItem(EXAM_HISTORY_KEY, JSON.stringify(history));
+    } catch(e) {}
+}
+
+function getExamHistory() {
+    try {
+        return JSON.parse(localStorage.getItem(EXAM_HISTORY_KEY) || '[]');
+    } catch(e) {
+        return [];
+    }
+}
+
+function renderExamHistoryChart() {
+    const history = getExamHistory();
+    if (history.length === 0) {
+        return '<p style="opacity:0.6; font-size:0.85rem; padding: 8px 0;">Henüz sınav sonucu bulunmuyor. İlk sınavı tamamladıktan sonra grafik burada görünecek.</p>';
+    }
+
+    const maxSkor = 100;
+    const barsHTML = history.map(item => {
+        const barHeight = Math.max(4, Math.round((item.skor / maxSkor) * 90));
+        let barColor = '#ef4444';
+        if (item.skor >= 80) barColor = '#10b981';
+        else if (item.skor >= 50) barColor = '#f59e0b';
+        return `
+            <div class="exam-history-bar-wrap" title="${item.konu}: %${item.skor} (${item.tarih})">
+                <div class="exam-history-bar" style="height:${barHeight}px; background:${barColor};"></div>
+                <div class="exam-history-bar-label">%${item.skor}</div>
+                <div class="exam-history-bar-label">${item.tarih}</div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="exam-history-chart">
+            <div class="exam-history-bars">${barsHTML}</div>
+        </div>
+        <div style="display:flex; gap:14px; margin-top:10px; font-size:0.72rem; opacity:0.7;">
+            <span style="color:#10b981;">■ ≥80% Başarılı</span>
+            <span style="color:#f59e0b;">■ ≥50% Orta</span>
+            <span style="color:#ef4444;">■ <50% Zayıf</span>
+        </div>
+    `;
+}
+
+// Collapsible bölüm toggle
+function toggleCollapsible(id) {
+    const section = document.getElementById(id);
+    if (!section) return;
+    section.classList.toggle('open');
+}
+
 // --- PROFİL ---
 function getTopicTrackableTotal(konuBasligi) {
     let total = 0;
@@ -1554,6 +1648,17 @@ function renderProfile(veri) {
     const profilePage = document.getElementById('page-profile');
     const topicSummaries = buildProfileTopicSummaries();
 
+    // Tüm konuları (lazy load olmadan) HTML'e çevir
+    const topicGridHTML = topicSummaries.length === 0
+        ? '<p style="opacity:0.6; font-size:0.85rem; padding: 8px 0;">Henüz gösterilecek konu özeti bulunmuyor.</p>'
+        : topicSummaries.map(item => `
+            <button class="profile-topic-mini-card" data-topic="${escapeHTML(item.konuBasligi)}">
+                <div class="profile-topic-mini-name">${escapeHTML(item.konuBasligi)}</div>
+                <div class="profile-topic-mini-meta" style="color:${getProgressColor(item.percent)};">%${item.percent}</div>
+                <div class="profile-topic-mini-count">${item.favoriteCount}/${item.total}</div>
+            </button>
+        `).join('');
+
     profilePage.innerHTML = `
         <div class="profile-header-card">
             <div class="avatar-circle">${veri.kullanici.ad.charAt(0)}</div>
@@ -1570,37 +1675,86 @@ function renderProfile(veri) {
             <div class="stat-box"><h3>Level 4</h3><p>Uzman Adayı</p></div>
         </div>
 
-        <div class="section-title" style="text-align:left;">⭐ Önemli Notlar</div>
-        <div id="profile-favorites-feed" class="profile-topic-summary-grid"></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin: 8px 0 4px;">
+            <button class="reset-progress-btn" onclick="confirmResetProgress()">
+                🔄 İlerlemeyi Sıfırla
+            </button>
+            <button class="notif-btn" onclick="toggleNotificationPermission()">
+                🔔 Hatırlatma Ayarı
+            </button>
+        </div>
+
+        <!-- Önemli Notlar (Açılır/Kapanır) -->
+        <div class="collapsible-section open" id="collapsible-notlar">
+            <div class="collapsible-header" onclick="toggleCollapsible('collapsible-notlar')">
+                <span>⭐ Önemli Notlar</span>
+                <span class="collapsible-chevron">▼</span>
+            </div>
+            <div class="collapsible-body">
+                <div class="collapsible-body-inner">
+                    <div class="profile-topic-summary-grid" id="profile-favorites-feed">
+                        ${topicGridHTML}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sınav Sonuç Geçmişi (Açılır/Kapanır) -->
+        <div class="collapsible-section" id="collapsible-sinav">
+            <div class="collapsible-header" onclick="toggleCollapsible('collapsible-sinav')">
+                <span>📊 Sınav Sonuç Geçmişi</span>
+                <span class="collapsible-chevron">▼</span>
+            </div>
+            <div class="collapsible-body">
+                <div class="collapsible-body-inner">
+                    ${renderExamHistoryChart()}
+                </div>
+            </div>
+        </div>
     `;
 
-    if (topicSummaries.length === 0) {
-        const container = document.getElementById('profile-favorites-feed');
-        if (container) container.innerHTML = '<p style="opacity:0.6; font-size:0.85rem;">Henüz gösterilecek konu özeti bulunmuyor.</p>';
-        updateDesktopProgressStatus();
-        return;
-    }
-    window.profileFavoriteFeedData = topicSummaries;
-    window.profileFavoriteFeedIndex = 0;
-    loadMoreProfileFavorites();
+    bindProfileTopicSummaryEvents(profilePage);
     updateDesktopProgressStatus();
 }
 
-function loadMoreProfileFavorites() {
-    const container = document.getElementById('profile-favorites-feed');
-    const data = window.profileFavoriteFeedData || [];
-    if (!container || window.profileFavoriteFeedIndex >= data.length) return;
+function confirmResetProgress() {
+    const modalDiv = document.createElement('div');
+    modalDiv.id = 'reset-confirm-modal';
+    modalDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;z-index:9999;animation:fadeIn 0.2s ease;';
+    modalDiv.innerHTML = `
+        <div style="background:var(--glass-bg);border:1px solid var(--glass-border);backdrop-filter:blur(14px);padding:28px;border-radius:20px;width:90%;max-width:360px;box-shadow:var(--card-shadow);text-align:center;">
+            <div style="font-size:2rem;margin-bottom:12px;">🔄</div>
+            <h3 style="margin-bottom:10px;color:var(--text-color);font-size:1.1rem;font-weight:700;">İlerlemeyi Sıfırla</h3>
+            <p style="color:var(--text-color);font-size:0.88rem;margin-bottom:22px;opacity:0.82;line-height:1.5;">Tüm çalışma ilerleme verilerini ve favorileri sıfırlamak istediğine emin misin? Bu işlem geri alınamaz.</p>
+            <div style="display:flex;gap:10px;">
+                <button onclick="document.getElementById('reset-confirm-modal').remove()" style="flex:1;padding:11px;background:transparent;border:1px solid var(--glass-border);border-radius:12px;color:var(--text-color);font-weight:600;cursor:pointer;font-size:0.9rem;">Vazgeç</button>
+                <button onclick="executeResetProgress()" style="flex:1;padding:11px;background:#ef4444;border:none;border-radius:12px;color:white;font-weight:700;cursor:pointer;font-size:0.9rem;">Evet, Sıfırla</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+}
 
-    const nextItems = data.slice(window.profileFavoriteFeedIndex, window.profileFavoriteFeedIndex + FEED_LOAD_COUNT);
-    container.insertAdjacentHTML('beforeend', nextItems.map(item => `
-        <button class="profile-topic-mini-card" data-topic="${escapeHTML(item.konuBasligi)}">
-            <div class="profile-topic-mini-name">${escapeHTML(item.konuBasligi)}</div>
-            <div class="profile-topic-mini-meta" style="color:${getProgressColor(item.percent)};">%${item.percent}</div>
-            <div class="profile-topic-mini-count">${item.favoriteCount}/${item.total}</div>
-        </button>
-    `).join(''));
-    bindProfileTopicSummaryEvents(container);
-    window.profileFavoriteFeedIndex += FEED_LOAD_COUNT;
+function executeResetProgress() {
+    const modal = document.getElementById('reset-confirm-modal');
+    if (modal) modal.remove();
+    // İlerleme ve favorileri sıfırla
+    localStorage.removeItem('gys_progress');
+    localStorage.removeItem(FAVORITES_STORAGE_KEY);
+    localStorage.removeItem(WRONG_QUESTIONS_STORAGE_KEY);
+    localStorage.removeItem('gys_istatistik');
+    if (typeof db !== 'undefined' && db.kullanici) {
+        db.kullanici.ilerleme = 0;
+        db.kullanici.istatistik = { cozulenSoru: 0, basariOrani: 0, calismaSerisi: 0 };
+    }
+    renderProfile(db);
+    updateDesktopProgressStatus();
+    openModal('✅ Sıfırlandı', 'Tüm ilerleme verilerin ve favorilerin başarıyla sıfırlandı.');
+}
+
+function loadMoreProfileFavorites() {
+    // Bu fonksiyon artık renderProfile() içinde tüm veriler bir kerede render edildiğinden
+    // yalnızca eski scroll listener ile çağrıldığında sessizce sonlanır.
 }
 
 // --- RESMİ SINAV MODU VE SİMÜLASYON MOTORU ---
@@ -1927,6 +2081,9 @@ function renderFormalReport(konuBasligi) {
         db.kullanici.istatistik.basariOrani = Math.round(((eskiBasari * (toplamSoru - formalExamQuestions.length)) + (basariOrani * formalExamQuestions.length)) / toplamSoru);
         try { localStorage.setItem('gys_istatistik', JSON.stringify(db.kullanici.istatistik)); } catch(e) {}
     }
+
+    // Sınav sonucunu geçmişe kaydet
+    saveExamResult(basariOrani, dogruSayisi, yanlisSayisi, bosSayisi, konuBasligi);
 
     // En çok hata yapılan kategoriyi tespit et
     let enZayifKategori = null;
