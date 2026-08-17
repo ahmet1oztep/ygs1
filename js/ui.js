@@ -1065,7 +1065,7 @@ function renderFeedFilterBar() {
             </div>
             <div class="filter-scroll feed-filter-scroll">
                 ${allTopics.map(topic => `
-                    <button class="filter-chip ${window.activeFeedTopicFilters.has(topic) ? 'active' : ''}" onclick="toggleFeedTopicFilter(decodeURIComponent('${encodeURIComponent(topic)}'))">
+                    <button class="filter-chip feed-filter-chip ${window.activeFeedTopicFilters.has(topic) ? 'active' : ''}" data-topic="${escapeHTML(topic)}">
                         ${escapeHTML(topic)}
                     </button>
                 `).join('')}
@@ -1073,6 +1073,28 @@ function renderFeedFilterBar() {
             <div id="feed-container"></div>
         </div>
     `;
+}
+
+function bindFeedTopicEvents() {
+    document.querySelectorAll('.feed-filter-chip').forEach(btn => {
+        if (btn.dataset.bound === 'true') return;
+        btn.dataset.bound = 'true';
+        btn.addEventListener('click', () => toggleFeedTopicFilter(btn.dataset.topic || ''));
+    });
+}
+
+function bindFeedCardEvents(scope = document) {
+    scope.querySelectorAll('.feed-tip-btn').forEach(btn => {
+        if (btn.dataset.bound === 'true') return;
+        btn.dataset.bound = 'true';
+        btn.addEventListener('click', () => openModal('💡 Sınav İpucu', btn.dataset.tip || ''));
+    });
+
+    scope.querySelectorAll('.feed-remove-btn').forEach(btn => {
+        if (btn.dataset.bound === 'true') return;
+        btn.dataset.bound = 'true';
+        btn.addEventListener('click', () => removeFavoriteById(btn.dataset.id || ''));
+    });
 }
 
 function toggleFeedTopicFilter(topic) {
@@ -1101,6 +1123,7 @@ function initFeed(feedVerileri) {
 
     window.aktifFeedVerisi = favoriteFeedItems;
     document.getElementById('page-feed').innerHTML = renderFeedFilterBar();
+    bindFeedTopicEvents();
     currentFeedIndex = 0;
     const container = document.getElementById('feed-container');
     if (container && favoriteFeedItems.length === 0) {
@@ -1138,10 +1161,10 @@ function loadMoreFeed(feedVerileri) {
 
                 <div class="feed-actions">
                     <div class="feed-actions-left">
-                        ${item.ipucu ? `<button class="action-btn" onclick="openModal('💡 Sınav İpucu', '${item.ipucu.replace(/'/g, "\\'")}')">💡 İpucu</button>` : ''}
+                        ${item.ipucu ? `<button class="action-btn feed-tip-btn" data-tip="${escapeHTML(item.ipucu)}">💡 İpucu</button>` : ''}
                     </div>
 
-                    <button class="remove-favorite-btn" onclick="removeFavoriteById('${item.id}')">
+                    <button class="remove-favorite-btn feed-remove-btn" data-id="${escapeHTML(item.id)}">
                         ✕ Kaldır
                     </button>
                 </div>
@@ -1150,6 +1173,7 @@ function loadMoreFeed(feedVerileri) {
     });
 
     container.insertAdjacentHTML('beforeend', html);
+    bindFeedCardEvents(container);
     currentFeedIndex += FEED_LOAD_COUNT;
 }
 
@@ -1336,6 +1360,13 @@ function renderMainExamQuestion() {
 function selectMainExamOption(optionIndex) {
     mainExamAnswers[mainExamCurrentIndex] = optionIndex;
     renderMainExamQuestion();
+    setTimeout(() => {
+        if (mainExamAnswers[mainExamCurrentIndex] !== optionIndex) return;
+        if (mainExamCurrentIndex < mainExamQuestions.length - 1) {
+            mainExamCurrentIndex++;
+            renderMainExamQuestion();
+        }
+    }, 180);
 }
 
 function prevMainExamQuestion() {
@@ -1360,7 +1391,7 @@ function confirmMainExamFinish() {
     const text = document.getElementById('modal-text');
     if (!modal || !title || !text) return;
 
-    title.innerHTML = 'Sınavı Bitir';
+    title.textContent = 'Sınavı Bitir';
     text.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:14px;">
             <p style="line-height:1.5;">Sınavı şimdi bitirirsen mevcut cevaplarına göre sonuç ekranı hazırlanır.</p>
@@ -1468,6 +1499,14 @@ function buildProfileTopicSummaries() {
     }).filter(item => item.total > 0);
 }
 
+function bindProfileTopicSummaryEvents(scope = document) {
+    scope.querySelectorAll('.profile-topic-card').forEach(card => {
+        if (card.dataset.bound === 'true') return;
+        card.dataset.bound = 'true';
+        card.addEventListener('click', () => openFeedWithTopics([card.dataset.topic || '']));
+    });
+}
+
 function renderProfile(veri) {
     const profilePage = document.getElementById('page-profile');
     const topicSummaries = buildProfileTopicSummaries();
@@ -1511,7 +1550,7 @@ function loadMoreProfileFavorites() {
 
     const nextItems = data.slice(window.profileFavoriteFeedIndex, window.profileFavoriteFeedIndex + FEED_LOAD_COUNT);
     container.insertAdjacentHTML('beforeend', nextItems.map(item => `
-        <button class="feed-card profile-topic-card" onclick="openFeedWithTopics([decodeURIComponent('${encodeURIComponent(item.konuBasligi)}')])" style="padding:15px;">
+        <button class="feed-card profile-topic-card" data-topic="${escapeHTML(item.konuBasligi)}" style="padding:15px;">
             <div class="feed-tag-row" style="margin-bottom:10px;">
                 <span class="feed-tag">${escapeHTML(item.konuBasligi)}</span>
                 <span class="profile-topic-count">${item.favoriteCount} önemli not</span>
@@ -1525,6 +1564,7 @@ function loadMoreProfileFavorites() {
             </div>
         </button>
     `).join(''));
+    bindProfileTopicSummaryEvents(container);
     window.profileFavoriteFeedIndex += FEED_LOAD_COUNT;
 }
 
