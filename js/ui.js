@@ -1601,11 +1601,31 @@ function renderExamHistoryChart() {
     `;
 }
 
-// Collapsible bölüm toggle
+// Collapsible bölüm toggle (gerçek scrollHeight ile pürüzsüz animasyon)
 function toggleCollapsible(id) {
     const section = document.getElementById(id);
     if (!section) return;
-    section.classList.toggle('open');
+    const body = section.querySelector('.collapsible-body');
+    const isOpen = section.classList.contains('open');
+
+    if (isOpen) {
+        // Kapat: mevcut yüksekliği sabitle, sonra 0'a indir
+        body.style.maxHeight = body.scrollHeight + 'px';
+        requestAnimationFrame(() => {
+            body.style.maxHeight = '0';
+        });
+        section.classList.remove('open');
+    } else {
+        // Aç: scrollHeight kadar genişlet
+        section.classList.add('open');
+        body.style.maxHeight = body.scrollHeight + 'px';
+        // Animasyon bitince sabit değeri kaldır (içerik değişirse uyumlu olsun)
+        const onTransitionEnd = () => {
+            body.style.maxHeight = 'none';
+            body.removeEventListener('transitionend', onTransitionEnd);
+        };
+        body.addEventListener('transitionend', onTransitionEnd);
+    }
 }
 
 // --- PROFİL ---

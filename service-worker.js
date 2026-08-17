@@ -109,8 +109,6 @@ self.addEventListener('push', event => {
     const title = data.title || 'GYS Pro Hatırlatıcı';
     const options = {
         body: data.body || 'Bugün çalışma hedefine ulaştın mı? 📚',
-        icon: './manifest.json',
-        badge: './manifest.json',
         tag: 'gys-reminder',
         renotify: true,
         data: { url: './' }

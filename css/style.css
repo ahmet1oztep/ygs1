@@ -2040,7 +2040,7 @@ header h1 {
 }
 
 .collapsible-section.open .collapsible-body {
-    max-height: 9999px;
+    max-height: none;
 }
 
 .collapsible-body-inner {
