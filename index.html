@@ -173,16 +173,8 @@
           return;
         }
 
-        if (data.user) {
-          const { error: profileError } = await supabaseClient
-            .from('profiles')
-            .insert([{ id: data.user.id, username: kadi }]);
-
-          if (profileError) {
-            alert("Profil oluşturulamadı: " + profileError.message);
-          } else {
-            alert("Kayıt başarılı! Şimdi giriş yapabilirsiniz.");
-          }
+        alert("Kayıt başarılı! (Tablo kontrolü atlandı). Şimdi giriş yapabilirsiniz.");
+      }
         }
       }
 
