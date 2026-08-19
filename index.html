@@ -9,9 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/style.css" />
     
-    <!-- Supabase Kütüphanesi ve Yeni Nesil Bağlantı Ayarı -->
+    <!-- Supabase Kütüphanesi ve Bağlantı Ayarı -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
+    <script>
       const SUPABASE_URL = 'https://vrdyiznbgicgnozohavbo.supabase.co';
       const SUPABASE_ANON_KEY = 'sb_publishable_8fJ6WfiRhjE99j3WoA7Iog_dX4Jjjmi';
       
@@ -35,10 +35,10 @@
             <button id="theme-toggle">🌙</button>
         </header>
 
-        <!-- ÜYE GİRİŞ VE KAYIT PANELİ -->
+        <!-- ÜYE GİRİŞ VE KAYIT PANELİ (Gerçek E-posta ile) -->
         <div id="auth-container" style="padding: 15px; text-align: center; background: rgba(59, 130, 246, 0.05); border-bottom: 1px solid #ddd; margin-bottom: 10px;">
             <h3 style="margin-bottom: 8px; font-size: 16px;">Giriş / Kayıt Ol</h3>
-            <input type="text" id="username" placeholder="Kullanıcı Adı" style="padding: 6px; width: 80%; max-width: 250px; margin-bottom: 6px; border: 1px solid #ccc; border-radius: 4px;"><br>
+            <input type="email" id="email" placeholder="E-posta Adresi" style="padding: 6px; width: 80%; max-width: 250px; margin-bottom: 6px; border: 1px solid #ccc; border-radius: 4px;"><br>
             <input type="password" id="piri-sifre" placeholder="Şifre" style="padding: 6px; width: 80%; max-width: 250px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px;"><br>
             <button onclick="kayitOl()" style="padding: 6px 12px; margin-right: 5px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">Kayıt Ol</button>
             <button onclick="girisYap()" style="padding: 6px 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">Giriş Yap</button>
@@ -97,7 +97,7 @@
     <script src="data/mevzuatFeed.js"></script>
     <script src="data/legal-updates.js"></script>
     
-    <!-- 1. Önce Tüm Sınav (-exam.js) Veri Dosyaları Yüklenir -->
+    <!-- Sınav ve Ders Veri Dosyaları -->
     <script src="data/Anayasa-exam.js"></script>
     <script src="data/657-exam.js"></script>
     <script src="data/2577-idariyargiusul-exam.js"></script>
@@ -121,7 +121,6 @@
     <script src="data/yargi-orgutu-exam.js"></script>
     <script src="data/harclar-exam.js"></script>
 
-    <!-- 2. Sonra Normal Ders Veri Dosyaları Yüklenir -->
     <script src="data/Anayasa.js"></script>
     <script src="data/657.js"></script>
     <script src="data/2577-idariyargiusul.js"></script>
@@ -145,33 +144,25 @@
     <script src="data/yargi-orgutu.js"></script>
     <script src="data/harclar.js"></script>
 
-    <!-- 3. Bunları Toplayan Merkezi Sınav Havuzu Yüklenir -->
     <script src="data/exams.js"></script>
 
-    <!-- 4. En Son Arayüz ve Mantık Dosyaları Yüklenir -->
     <script src="js/ui.js"></script>
     <script src="js/education-reader.js"></script>
     <script src="js/app.js"></script>
 
-    <!-- Supabase Giriş / Kayıt Fonksiyonları -->
+    <!-- Supabase Gerçek E-posta Kayıt ve Giriş Fonksiyonları -->
     <script>
-      function uydurmaEmail(kadi) {
-        return kadi.trim().toLowerCase() + "@gyspro.local";
-      }
-
       async function kayitOl() {
-        const kadi = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
         const sifre = document.getElementById('piri-sifre').value;
         
-        if (!kadi || !sifre) {
-          alert("Kullanıcı adı ve şifre boş olamaz!");
+        if (!email || !sifre) {
+          alert("E-posta ve şifre boş olamaz!");
           return;
         }
 
-        const email = uydurmaEmail(kadi);
-
         const { data, error } = await supabaseClient.auth.signUp({
-          email: email,
+          email: email.trim(),
           password: sifre,
         });
 
@@ -180,24 +171,20 @@
           return;
         }
 
-        alert("Kayıt başarılı! (Tablo kontrolü atlandı). Şimdi giriş yapabilirsiniz.");
-      }
-        }
+        alert("Kayıt başarılı! Lütfen e-posta adresinize gelen onay bağlantısına tıklayın.");
       }
 
       async function girisYap() {
-        const kadi = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
         const sifre = document.getElementById('piri-sifre').value;
 
-        if (!kadi || !sifre) {
-          alert("Lütfen kullanıcı adı ve şifrenizi girin!");
+        if (!email || !sifre) {
+          alert("Lütfen e-posta ve şifrenizi girin!");
           return;
         }
 
-        const email = uydurmaEmail(kadi);
-
         const { data, error } = await supabaseClient.auth.signInWithPassword({
-          email: email,
+          email: email.trim(),
           password: sifre,
         });
 
@@ -211,7 +198,6 @@
     </script>
 
     <script>
-        // Service Worker kaydı (PWA/Offline desteği)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('service-worker.js')
