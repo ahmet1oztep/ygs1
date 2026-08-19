@@ -8,23 +8,15 @@
     <meta name="theme-color" content="#3b82f6" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/style.css" />
+    
+    <!-- Supabase Kütüphanesi ve Bağlantı Ayarı -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const SUPABASE_URL = 'https://vrdyiznbgicgnozohavbo.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyZHlpem5iZ2ljbm96b2hhdmJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxMzEyNjUsImV4cCI6MjE0MjcwNzI2NX0.Ha930qlhysuZoFJLd2lPUEExnE7QWRqFCZAT11-T3n8';
-  
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-</script>
-    <!-- Supabase Kütüphanesi -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<!-- Supabase Bağlantı Ayarı -->
-<script>
-  const SUPABASE_URL = 'https://vrdyiznbgicgnozohavbo.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyZHlpem5iZ2ljbm96b2hhdmJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxMzEyNjUsImV4cCI6MjE0MjcwNzI2NX0.Ha930qlhysuZoFJLd2lPUEExnE7QWRqFCZAT11-T3n8';
-  
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-</script>
+    <script>
+      const SUPABASE_URL = 'https://vrdyiznbgicgnozohavbo.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyZHlpem5iZ2ljbm96b2hhdmJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxMzEyNjUsImV4cCI6MjE0MjcwNzI2NX0.Ha930qlhysuZoFJLd2lPUEExnE7QWRqFCZAT11-T3n8';
+      
+      const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
 </head>
 <body>
     <div id="app-container">
@@ -33,6 +25,15 @@
             <h1 id="page-title">GYS PRO</h1>
             <button id="theme-toggle">🌙</button>
         </header>
+
+        <!-- ÜYE GİRİŞ VE KAYIT PANELİ -->
+        <div id="auth-container" style="padding: 15px; text-align: center; background: rgba(59, 130, 246, 0.05); border-bottom: 1px solid #ddd; margin-bottom: 10px;">
+            <h3 style="margin-bottom: 8px; font-size: 16px;">Giriş / Kayıt Ol</h3>
+            <input type="text" id="username" placeholder="Kullanıcı Adı" style="padding: 6px; width: 80%; max-width: 250px; margin-bottom: 6px; border: 1px solid #ccc; border-radius: 4px;"><br>
+            <input type="password" id="piri-sifre" placeholder="Şifre" style="padding: 6px; width: 80%; max-width: 250px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px;"><br>
+            <button onclick="kayitOl()" style="padding: 6px 12px; margin-right: 5px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">Kayıt Ol</button>
+            <button onclick="girisYap()" style="padding: 6px 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">Giriş Yap</button>
+        </div>
 
         <!-- PC SABİT SOL SIDEBAR (Sadece masaüstünde görünür) -->
         <aside id="desktop-sidebar" aria-label="Masaüstü gezinme">
@@ -142,6 +143,71 @@
     <script src="js/ui.js"></script>
     <script src="js/education-reader.js"></script>
     <script src="js/app.js"></script>
+
+    <!-- Supabase Giriş / Kayıt Fonksiyonları -->
+    <script>
+      function uydurmaEmail(kadi) {
+        return kadi.trim().toLowerCase() + "@gyspro.local";
+      }
+
+      async function kayitOl() {
+        const kadi = document.getElementById('username').value;
+        const sifre = document.getElementById('piri-sifre').value;
+        
+        if (!kadi || !sifre) {
+          alert("Kullanıcı adı ve şifre boş olamaz!");
+          return;
+        }
+
+        const email = uydurmaEmail(kadi);
+
+        const { data, error } = await supabaseClient.auth.signUp({
+          email: email,
+          password: sifre,
+        });
+
+        if (error) {
+          alert("Kayıt hatası: " + error.message);
+          return;
+        }
+
+        if (data.user) {
+          const { error: profileError } = await supabaseClient
+            .from('profiles')
+            .insert([{ id: data.user.id, username: kadi }]);
+
+          if (profileError) {
+            alert("Profil oluşturulamadı: " + profileError.message);
+          } else {
+            alert("Kayıt başarılı! Şimdi giriş yapabilirsiniz.");
+          }
+        }
+      }
+
+      async function girisYap() {
+        const kadi = document.getElementById('username').value;
+        const sifre = document.getElementById('piri-sifre').value;
+
+        if (!kadi || !sifre) {
+          alert("Lütfen kullanıcı adı ve şifrenizi girin!");
+          return;
+        }
+
+        const email = uydurmaEmail(kadi);
+
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: sifre,
+        });
+
+        if (error) {
+          alert("Giriş başarısız: " + error.message);
+        } else {
+          alert("Giriş başarılı!");
+          document.getElementById('auth-container').style.display = 'none';
+        }
+      }
+    </script>
 
     <script>
         // Service Worker kaydı (PWA/Offline desteği)
