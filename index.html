@@ -11,11 +11,13 @@
     
     <!-- Supabase Kütüphanesi ve Yeni Nesil Bağlantı Ayarı -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
+   <script>
       const SUPABASE_URL = 'https://vrdyiznbgicgnozohavbo.supabase.co';
       const SUPABASE_ANON_KEY = 'sb_publishable_8fJ6WfiRhjE99j3WoA7Iog_dX4Jjjmi';
       
-      const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true }
+      });
     </script>
 </head>
 <body>
